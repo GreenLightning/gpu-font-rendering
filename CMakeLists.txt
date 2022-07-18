@@ -18,6 +18,12 @@ set(GLFW_INSTALL        OFF CACHE BOOL "" FORCE)
 add_subdirectory("dependencies/glfw")
 
 add_subdirectory("dependencies/glad")
+
+set(FT_DISABLE_BROTLI   ON  CACHE BOOL "" FORCE)
+set(FT_DISABLE_BZIP2    ON  CACHE BOOL "" FORCE)
+set(FT_DISABLE_HARFBUZZ ON  CACHE BOOL "" FORCE)
+set(FT_DISABLE_PNG      ON  CACHE BOOL "" FORCE)
+set(FT_DISABLE_ZLIB     ON  CACHE BOOL "" FORCE)
 add_subdirectory("dependencies/freetype")
 
 add_executable(main "source/main.cpp")
