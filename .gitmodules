@@ -4,3 +4,6 @@
 [submodule "dependencies/freetype"]
 	path = dependencies/freetype
 	url = https://gitlab.freedesktop.org/freetype/freetype.git
+[submodule "dependencies/efsw"]
+	path = dependencies/efsw
+	url = https://github.com/SpartanJ/efsw

@@ -26,9 +26,12 @@ set(FT_DISABLE_PNG      ON  CACHE BOOL "" FORCE)
 set(FT_DISABLE_ZLIB     ON  CACHE BOOL "" FORCE)
 add_subdirectory("dependencies/freetype")
 
+add_subdirectory("dependencies/efsw")
+
 add_executable(main "source/main.cpp")
+set_target_properties(main PROPERTIES CXX_STANDARD 14)
 target_include_directories(main PUBLIC "dependencies/include")
-target_link_libraries(main OpenGL::GL glfw glad freetype)
+target_link_libraries(main OpenGL::GL glfw glad freetype efsw)
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT main)
 set_target_properties(main PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")

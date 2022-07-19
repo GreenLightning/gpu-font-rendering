@@ -1,4 +1,3 @@
-#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -10,65 +9,15 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "shader_catalog.hpp"
+
 namespace {
 	FT_Library library;
 
 	GLuint quadVAO;
 
-	GLuint backgroundProgram;
-}
-
-std::string readFile(std::string filename, std::string& error) {
-	std::ifstream stream(filename, std::ios::binary);
-	if (!stream) { error = "failed to open: " + filename; return ""; }
-
-	stream.seekg(0, std::istream::end);
-	size_t size = stream.tellg();
-	stream.seekg(0, std::istream::beg);
-
-	std::string result = std::string(size, 0);
-	stream.read(&result[0], size);
-	if (!stream) { error = "failed to read: " + filename; return ""; }
-
-	return result;
-}
-
-GLuint compileShader(std::string name, std::string& error) {
-	std::string vertexData = readFile("shaders/" + name + ".vert", error);
-	if (error != "") return 0;
-
-	std::string fragmentData = readFile("shaders/" + name + ".frag", error);
-	if (error != "") return 0;
-
-	const char* vertexSource = vertexData.c_str();
-	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	defer { glDeleteShader(vertexShader); };
-	glShaderSource(vertexShader, 1, &vertexSource, nullptr);
-	glCompileShader(vertexShader);
-
-	const char* fragmentSource = fragmentData.c_str();
-	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	defer { glDeleteShader(fragmentShader); };
-	glShaderSource(fragmentShader, 1, &fragmentSource, nullptr);
-	glCompileShader(fragmentShader);
-
-	GLuint program = glCreateProgram();
-	glAttachShader(program, vertexShader);
-	glAttachShader(program, fragmentShader);
-	glLinkProgram(program);
-
-	GLint success = 0;
-	glGetProgramiv(program, GL_LINK_STATUS, &success);
-	if (!success) {
-		char log [1024];
-		GLsizei length = 0;
-		glGetProgramInfoLog(program, sizeof(log), &length, log);
-		glDeleteProgram(program);
-		error = "failed to compile program " + name + ":\n\n" + log;
-		return 0;
-	}
-
-	return program;
+	std::unique_ptr<ShaderCatalog> shaderCatalog;
+	std::shared_ptr<ShaderCatalog::Entry> backgroundShader;
 }
 
 int main(int argc, char* argv[]) {
@@ -109,13 +58,12 @@ int main(int argc, char* argv[]) {
 
 	glGenVertexArrays(1, &quadVAO);
 
-	{
-		std::string error;
-		backgroundProgram = compileShader("background", error);
-		if (error != "") std::cerr << "ERROR: " << error << std::endl;
-	}
+	shaderCatalog = std::make_unique<ShaderCatalog>("shaders");
+	backgroundShader = shaderCatalog->get("background");
 
 	while(!glfwWindowShouldClose(window)) {
+		shaderCatalog->update();
+
 		glfwPollEvents();
 
 		int width, height;
@@ -125,7 +73,8 @@ int main(int argc, char* argv[]) {
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		glUseProgram(backgroundProgram);
+		GLuint program = backgroundShader->getProgram();
+		glUseProgram(program);
 		glBindVertexArray(quadVAO);
 
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
