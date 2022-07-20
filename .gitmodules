@@ -7,3 +7,6 @@
 [submodule "dependencies/efsw"]
 	path = dependencies/efsw
 	url = https://github.com/SpartanJ/efsw
+[submodule "dependencies/glm"]
+	path = dependencies/glm
+	url = https://github.com/g-truc/glm
