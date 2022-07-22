@@ -97,6 +97,7 @@ public:
 		std::vector<BufferCurve> bufferCurves;
 
 		{
+			uint32_t charcode = 0;
 			FT_UInt glyphIndex = 0;
 			FT_Error error = FT_Load_Glyph(face, glyphIndex, FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP);
 			if (error) {
@@ -104,29 +105,7 @@ public:
 				// Continue, because we always want an entry for the undefined glyph in our glyphs map!
 			}
 
-			BufferGlyph bufferGlyph;
-			bufferGlyph.start = static_cast<int32_t>(bufferCurves.size());
-
-			short start = 0;
-			for (int i = 0; i < face->glyph->outline.n_contours; i++) {
-				convertContour(bufferCurves, &face->glyph->outline, start, face->glyph->outline.contours[i]+1, emSize);
-				start = face->glyph->outline.contours[i]+1;
-			}
-
-			bufferGlyph.count = static_cast<int32_t>(bufferCurves.size()) - bufferGlyph.start;
-
-			int32_t bufferIndex = static_cast<int32_t>(bufferGlyphs.size());
-			bufferGlyphs.push_back(bufferGlyph);
-
-			Glyph glyph;
-			glyph.glyphIndex = glyphIndex;
-			glyph.bufferIndex = bufferIndex;
-			glyph.width = face->glyph->metrics.width;
-			glyph.height = face->glyph->metrics.height;
-			glyph.bearingX = face->glyph->metrics.horiBearingX;
-			glyph.bearingY = face->glyph->metrics.horiBearingY;
-			glyph.advance = face->glyph->metrics.horiAdvance;
-			glyphs[0] = glyph;
+			buildGlyph(bufferGlyphs, bufferCurves, charcode, glyphIndex);
 		}
 
 		for (uint32_t charcode = 32; charcode < 128; charcode++) {
@@ -139,29 +118,7 @@ public:
 				continue;
 			}
 
-			BufferGlyph bufferGlyph;
-			bufferGlyph.start = static_cast<int32_t>(bufferCurves.size());
-
-			short start = 0;
-			for (int i = 0; i < face->glyph->outline.n_contours; i++) {
-				convertContour(bufferCurves, &face->glyph->outline, start, face->glyph->outline.contours[i]+1, emSize);
-				start = face->glyph->outline.contours[i]+1;
-			}
-
-			bufferGlyph.count = static_cast<int32_t>(bufferCurves.size()) - bufferGlyph.start;
-
-			int32_t bufferIndex = static_cast<int32_t>(bufferGlyphs.size());
-			bufferGlyphs.push_back(bufferGlyph);
-
-			Glyph glyph;
-			glyph.glyphIndex = glyphIndex;
-			glyph.bufferIndex = bufferIndex;
-			glyph.width = face->glyph->metrics.width;
-			glyph.height = face->glyph->metrics.height;
-			glyph.bearingX = face->glyph->metrics.horiBearingX;
-			glyph.bearingY = face->glyph->metrics.horiBearingY;
-			glyph.advance = face->glyph->metrics.horiAdvance;
-			glyphs[charcode] = glyph;
+			buildGlyph(bufferGlyphs, bufferCurves, charcode, glyphIndex);
 		}
 
 		glBindBuffer(GL_TEXTURE_BUFFER, glyphBuffer);
@@ -194,10 +151,37 @@ public:
 	}
 
 private:
-	// This function takes a single contour (defined by beginIndex and endIndex)
-	// from outline and converts it into individual quadratic bezier curves,
-	// which are added to the curves vector.
-	void convertContour(std::vector<BufferCurve>& curves, const FT_Outline* outline, short beginIndex, short endIndex, float emSize) {
+	void buildGlyph(std::vector<BufferGlyph>& bufferGlyphs, std::vector<BufferCurve>& bufferCurves, uint32_t charcode, FT_UInt glyphIndex) {
+		BufferGlyph bufferGlyph;
+		bufferGlyph.start = static_cast<int32_t>(bufferCurves.size());
+
+		short start = 0;
+		for (int i = 0; i < face->glyph->outline.n_contours; i++) {
+			// Note: The end indices in face->glyph->outline.contours are inclusive.
+			convertContour(bufferCurves, &face->glyph->outline, start, face->glyph->outline.contours[i], emSize);
+			start = face->glyph->outline.contours[i]+1;
+		}
+
+		bufferGlyph.count = static_cast<int32_t>(bufferCurves.size()) - bufferGlyph.start;
+
+		int32_t bufferIndex = static_cast<int32_t>(bufferGlyphs.size());
+		bufferGlyphs.push_back(bufferGlyph);
+
+		Glyph glyph;
+		glyph.glyphIndex = glyphIndex;
+		glyph.bufferIndex = bufferIndex;
+		glyph.width = face->glyph->metrics.width;
+		glyph.height = face->glyph->metrics.height;
+		glyph.bearingX = face->glyph->metrics.horiBearingX;
+		glyph.bearingY = face->glyph->metrics.horiBearingY;
+		glyph.advance = face->glyph->metrics.horiAdvance;
+		glyphs[charcode] = glyph;
+	}
+
+	// This function takes a single contour (defined by firstIndex and
+	// lastIndex, both inclusive) from outline and converts it into individual
+	// quadratic bezier curves, which are added to the curves vector.
+	void convertContour(std::vector<BufferCurve>& curves, const FT_Outline* outline, short firstIndex, short lastIndex, float emSize) {
 		// Cubic bezier curves are not supported (TODO: add check).
 		// TrueType fonts only contain quadratic bezier curves.
 		// OpenType fonts may contain outline data in TrueType format
@@ -220,7 +204,15 @@ private:
 		// defines a chain of two bezier curves sharing the virtual point as one
 		// of their end points.
 
-		if (beginIndex == endIndex) return;
+		if (firstIndex == lastIndex) return;
+
+		short dIndex = 1;
+		if (outline->flags & FT_OUTLINE_REVERSE_FILL) {
+			short tmpIndex = lastIndex;
+			lastIndex = firstIndex;
+			firstIndex = tmpIndex;
+			dIndex = -1;
+		}
 
 		auto makeMidpoint = [](const FT_Vector& a, const FT_Vector& b) {
 			FT_Vector result;
@@ -242,17 +234,17 @@ private:
 
 		// Find a point that is on the curve and remove it from the list.
 		FT_Vector first;
-		bool firstOnCurve = (outline->tags[beginIndex] & FT_CURVE_TAG_ON);
+		bool firstOnCurve = (outline->tags[firstIndex] & FT_CURVE_TAG_ON);
 		if (firstOnCurve) {
-			first = outline->points[beginIndex];
-			beginIndex++;
+			first = outline->points[firstIndex];
+			firstIndex += dIndex;
 		} else {
-			bool lastOnCurve = (outline->tags[endIndex-1] & FT_CURVE_TAG_ON);
+			bool lastOnCurve = (outline->tags[lastIndex] & FT_CURVE_TAG_ON);
 			if (lastOnCurve) {
-				first = outline->points[endIndex-1];
-				endIndex--;
+				first = outline->points[lastIndex];
+				lastIndex -= dIndex;
 			} else {
-				first = makeMidpoint(outline->points[beginIndex], outline->points[endIndex-1]);
+				first = makeMidpoint(outline->points[firstIndex], outline->points[lastIndex]);
 				// This is a virtual point, so we don't have to remove it.
 			}
 		}
@@ -260,7 +252,7 @@ private:
 		FT_Vector start = first;
 		FT_Vector previous = first;
 		bool previousOnCurve = true;
-		for (short index = beginIndex; index != endIndex; index++) {
+		for (short index = firstIndex; index != lastIndex + dIndex; index += dIndex) {
 			FT_Vector current = outline->points[index];
 			bool currentOnCurve = (outline->tags[index] & FT_CURVE_TAG_ON);
 			if (currentOnCurve) {
