@@ -26,6 +26,7 @@ set(FT_DISABLE_HARFBUZZ ON  CACHE BOOL "" FORCE)
 set(FT_DISABLE_PNG      ON  CACHE BOOL "" FORCE)
 set(FT_DISABLE_ZLIB     ON  CACHE BOOL "" FORCE)
 add_subdirectory("dependencies/freetype")
+target_compile_definitions(freetype PUBLIC FT_CONFIG_OPTION_ERROR_STRINGS)
 
 add_subdirectory("dependencies/efsw")
 
