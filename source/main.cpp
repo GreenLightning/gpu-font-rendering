@@ -597,6 +597,20 @@ static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
 	dragController.onScroll(window, xOffset, yOffset);
 }
 
+static void dropCallback(GLFWwindow* window, int pathCount, const char* paths[]) {
+	if (pathCount == 0) return;
+
+	std::string filename = paths[0];
+
+	std::string error;
+	FT_Face face = Font::loadFace(library, filename, error);
+	if (error != "") {
+		std::cerr << "[font] failed to load " << filename << ": " << error << std::endl;
+	} else {
+		font = std::make_unique<Font>(face);
+	}
+}
+
 int main(int argc, char* argv[]) {
 	if (!glfwInit()) {
 		std::cerr << "ERROR: failed to initialize GLFW" << std::endl;
@@ -637,6 +651,7 @@ int main(int argc, char* argv[]) {
 	glfwSetMouseButtonCallback(window, mouseButtonCallback);
 	glfwSetCursorPosCallback(window, cursorPosCallback);
 	glfwSetScrollCallback(window, scrollCallback);
+	glfwSetDropCallback(window, dropCallback);
 
 	glGenVertexArrays(1, &emptyVAO);
 
