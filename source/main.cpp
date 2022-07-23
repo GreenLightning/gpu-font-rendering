@@ -19,7 +19,7 @@
 
 class Font {
 	struct Glyph {
-		FT_UInt glyphIndex;
+		FT_UInt index;
 		int32_t bufferIndex;
 
 		// Important glyph metrics in font units.
@@ -74,11 +74,12 @@ public:
 
 		glGenBuffers(1, &vbo);
 		glGenBuffers(1, &ebo);
-		glGenBuffers(1, &glyphBuffer);
-		glGenBuffers(1, &curveBuffer);
 
 		glGenTextures(1, &glyphTexture);
 		glGenTextures(1, &curveTexture);
+
+		glGenBuffers(1, &glyphBuffer);
+		glGenBuffers(1, &curveBuffer);
 
 		emSize = face->units_per_EM;
 
@@ -143,11 +144,12 @@ public:
 
 		glDeleteBuffers(1, &vbo);
 		glDeleteBuffers(1, &ebo);
-		glDeleteBuffers(1, &glyphBuffer);
-		glDeleteBuffers(1, &curveBuffer);
 
 		glDeleteTextures(1, &glyphTexture);
 		glDeleteTextures(1, &curveTexture);
+
+		glDeleteBuffers(1, &glyphBuffer);
+		glDeleteBuffers(1, &curveBuffer);
 	}
 
 private:
@@ -168,7 +170,7 @@ private:
 		bufferGlyphs.push_back(bufferGlyph);
 
 		Glyph glyph;
-		glyph.glyphIndex = glyphIndex;
+		glyph.index = glyphIndex;
 		glyph.bufferIndex = bufferIndex;
 		glyph.width = face->glyph->metrics.width;
 		glyph.height = face->glyph->metrics.height;
@@ -182,7 +184,6 @@ private:
 	// lastIndex, both inclusive) from outline and converts it into individual
 	// quadratic bezier curves, which are added to the curves vector.
 	void convertContour(std::vector<BufferCurve>& curves, const FT_Outline* outline, short firstIndex, short lastIndex, float emSize) {
-		// Cubic bezier curves are not supported (TODO: add check).
 		// TrueType fonts only contain quadratic bezier curves.
 		// OpenType fonts may contain outline data in TrueType format
 		// or in Compact Font Format, which also allows cubic beziers.
@@ -214,73 +215,109 @@ private:
 			dIndex = -1;
 		}
 
-		auto makeMidpoint = [](const FT_Vector& a, const FT_Vector& b) {
-			FT_Vector result;
-			result.x = (a.x + b.x) / 2;
-			result.y = (a.y + b.y) / 2;
-			return result;
+		auto convert = [emSize](const FT_Vector& v) {
+			return glm::vec2(
+				(float)v.x / emSize,
+				(float)v.y / emSize
+			);
 		};
 
-		auto makeCurve = [emSize](const FT_Vector& p0, const FT_Vector& p1, const FT_Vector& p2) {
+		auto makeMidpoint = [](const glm::vec2& a, const glm::vec2& b) {
+			return 0.5f * (a + b);
+		};
+
+		auto makeCurve = [](const glm::vec2& p0, const glm::vec2& p1, const glm::vec2& p2) {
 			BufferCurve result;
-			result.x0 = (float)p0.x / emSize;
-			result.y0 = (float)p0.y / emSize;
-			result.x1 = (float)p1.x / emSize;
-			result.y1 = (float)p1.y / emSize;
-			result.x2 = (float)p2.x / emSize;
-			result.y2 = (float)p2.y / emSize;
+			result.x0 = p0.x;
+			result.y0 = p0.y;
+			result.x1 = p1.x;
+			result.y1 = p1.y;
+			result.x2 = p2.x;
+			result.y2 = p2.y;
 			return result;
 		};
 
 		// Find a point that is on the curve and remove it from the list.
-		FT_Vector first;
+		glm::vec2 first;
 		bool firstOnCurve = (outline->tags[firstIndex] & FT_CURVE_TAG_ON);
 		if (firstOnCurve) {
-			first = outline->points[firstIndex];
+			first = convert(outline->points[firstIndex]);
 			firstIndex += dIndex;
 		} else {
 			bool lastOnCurve = (outline->tags[lastIndex] & FT_CURVE_TAG_ON);
 			if (lastOnCurve) {
-				first = outline->points[lastIndex];
+				first = convert(outline->points[lastIndex]);
 				lastIndex -= dIndex;
 			} else {
-				first = makeMidpoint(outline->points[firstIndex], outline->points[lastIndex]);
+				first = makeMidpoint(convert(outline->points[firstIndex]), convert(outline->points[lastIndex]));
 				// This is a virtual point, so we don't have to remove it.
 			}
 		}
 
-		FT_Vector start = first;
-		FT_Vector previous = first;
-		bool previousOnCurve = true;
+		glm::vec2 start = first;
+		glm::vec2 control = first;
+		glm::vec2 previous = first;
+		char previousTag = FT_CURVE_TAG_ON;
 		for (short index = firstIndex; index != lastIndex + dIndex; index += dIndex) {
-			FT_Vector current = outline->points[index];
-			bool currentOnCurve = (outline->tags[index] & FT_CURVE_TAG_ON);
-			if (currentOnCurve) {
-				if (previousOnCurve) {
+			glm::vec2 current = convert(outline->points[index]);
+			char currentTag = FT_CURVE_TAG(outline->tags[index]);
+			if (currentTag == FT_CURVE_TAG_CUBIC) {
+				// No-op, wait for more points.
+				control = previous;
+			} else if (currentTag == FT_CURVE_TAG_ON) {
+				if (previousTag == FT_CURVE_TAG_CUBIC) {
+					glm::vec2& b0 = start;
+					glm::vec2& b1 = control;
+					glm::vec2& b2 = previous;
+					glm::vec2& b3 = current;
+
+					glm::vec2 c0 = b0 + 0.75f * (b1 - b0);
+					glm::vec2 c1 = b3 + 0.75f * (b2 - b3);
+
+					glm::vec2 d = makeMidpoint(c0, c1);
+
+					curves.push_back(makeCurve(b0, c0, d));
+					curves.push_back(makeCurve(d, c1, b3));
+				} else if (previousTag == FT_CURVE_TAG_ON) {
 					// Linear segment.
 					curves.push_back(makeCurve(previous, makeMidpoint(previous, current), current));
-					start = current;
 				} else {
 					// Regular bezier curve.
 					curves.push_back(makeCurve(start, previous, current));
-					start = current;
 				}
-			} else {
-				if (previousOnCurve) {
+				start = current;
+				control = current;
+			} else /* currentTag == FT_CURVE_TAG_CONIC */ {
+				if (previousTag == FT_CURVE_TAG_ON) {
 					// No-op, wait for third point.
 				} else {
 					// Create virtual on point.
-					FT_Vector mid = makeMidpoint(previous, current);
+					glm::vec2 mid = makeMidpoint(previous, current);
 					curves.push_back(makeCurve(start, previous, mid));
 					start = mid;
+					control = mid;
 				}
 			}
 			previous = current;
-			previousOnCurve = currentOnCurve;
+			previousTag = currentTag;
 		}
 
 		// Close the contour.
-		if (previousOnCurve) {
+		if (previousTag == FT_CURVE_TAG_CUBIC) {
+			glm::vec2& b0 = start;
+			glm::vec2& b1 = control;
+			glm::vec2& b2 = previous;
+			glm::vec2& b3 = first;
+
+			glm::vec2 c0 = b0 + 0.75f * (b1 - b0);
+			glm::vec2 c1 = b3 + 0.75f * (b2 - b3);
+
+			glm::vec2 d = makeMidpoint(c0, c1);
+
+			curves.push_back(makeCurve(b0, c0, d));
+			curves.push_back(makeCurve(d, c1, b3));
+
+		} else if (previousTag == FT_CURVE_TAG_ON) {
 			// Linear segment.
 			curves.push_back(makeCurve(previous, makeMidpoint(previous, first), first));
 		} else {
@@ -319,9 +356,9 @@ public:
 			auto glyphIt = glyphs.find(charcode);
 			Glyph& glyph = (glyphIt == glyphs.end()) ? glyphs[0] : glyphIt->second;
 
-			if (previous != 0 && glyph.glyphIndex != 0) {
+			if (previous != 0 && glyph.index != 0) {
 				FT_Vector kerning;
-				FT_Error error = FT_Get_Kerning(face, previous, glyph.glyphIndex, FT_KERNING_UNSCALED, &kerning);
+				FT_Error error = FT_Get_Kerning(face, previous, glyph.index, FT_KERNING_UNSCALED, &kerning);
 				if (!error) {
 					x += (float)kerning.x / emSize * worldSize;
 				}
@@ -347,7 +384,7 @@ public:
 			indices.insert(indices.end(), { base, base+1, base+2, base+2, base+3, base });
 
 			x += (float)glyph.advance / emSize * worldSize;
-			previous = glyph.glyphIndex;
+			previous = glyph.index;
 		}
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(BufferVertex) * vertices.size(), vertices.data(), GL_STREAM_DRAW);
@@ -362,8 +399,8 @@ private:
 	FT_Face face;
 
 	GLuint vao, vbo, ebo;
-	GLuint glyphBuffer, curveBuffer;
 	GLuint glyphTexture, curveTexture;
+	GLuint glyphBuffer, curveBuffer;
 
 	float emSize;
 	std::unordered_map<uint32_t, Glyph> glyphs;
