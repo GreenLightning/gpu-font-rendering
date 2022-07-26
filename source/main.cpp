@@ -193,6 +193,24 @@ namespace {
 	std::shared_ptr<ShaderCatalog::Entry> fontShader;
 
 	std::unique_ptr<Font> font;
+
+	std::string text = "Hello, world! äöü";
+}
+
+static void loadFont(const std::string& filename) {
+	std::string error;
+	FT_Face face = Font::loadFace(library, filename, error);
+	if (error != "") {
+		std::cerr << "[font] failed to load " << filename << ": " << error << std::endl;
+		return;
+	}
+
+	font = std::make_unique<Font>(face);
+
+	font->dilation = 0.1f;
+	font->worldSize = 0.2f;
+
+	font->prepareGlyphsForText(text);
 }
 
 static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
@@ -209,16 +227,7 @@ static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
 
 static void dropCallback(GLFWwindow* window, int pathCount, const char* paths[]) {
 	if (pathCount == 0) return;
-
-	std::string filename = paths[0];
-
-	std::string error;
-	FT_Face face = Font::loadFace(library, filename, error);
-	if (error != "") {
-		std::cerr << "[font] failed to load " << filename << ": " << error << std::endl;
-	} else {
-		font = std::make_unique<Font>(face);
-	}
+	loadFont(paths[0]);
 }
 
 int main(int argc, char* argv[]) {
@@ -269,17 +278,7 @@ int main(int argc, char* argv[]) {
 	backgroundShader = shaderCatalog->get("background");
 	fontShader = shaderCatalog->get("font");
 
-	{
-		std::string filename = "fonts/SourceSerifPro-Regular.otf";
-
-		std::string error;
-		FT_Face face = Font::loadFace(library, filename, error);
-		if (error != "") {
-			std::cerr << "[font] failed to load " << filename << ": " << error << std::endl;
-		} else {
-			font = std::make_unique<Font>(face);
-		}
-	}
+	loadFont("fonts/SourceSerifPro-Regular.otf");
 
 	while(!glfwWindowShouldClose(window)) {
 		shaderCatalog->update();
@@ -318,8 +317,6 @@ int main(int argc, char* argv[]) {
 			glUseProgram(program);
 
 			font->program = program;
-			font->dilation = 0.1f;
-			font->worldSize = 0.2f;
 			font->drawSetup();
 
 			location = glGetUniformLocation(program, "projection");
@@ -332,7 +329,7 @@ int main(int argc, char* argv[]) {
 			location = glGetUniformLocation(program, "color");
 			glUniform4f(location, 1.0f, 1.0f, 1.0f, 1.0f);
 
-			font->draw(0, 0, "Hello, world!");
+			font->draw(0, 0, text);
 			glUseProgram(0);
 		}
 

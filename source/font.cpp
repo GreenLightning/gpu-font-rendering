@@ -56,6 +56,8 @@ public:
 	}
 
 	Font(FT_Face face) : face(face) {
+		emSize = face->units_per_EM;
+
 		glGenVertexArrays(1, &vao);
 
 		glGenBuffers(1, &vbo);
@@ -66,8 +68,6 @@ public:
 
 		glGenBuffers(1, &glyphBuffer);
 		glGenBuffers(1, &curveBuffer);
-
-		emSize = face->units_per_EM;
 
 		glBindVertexArray(vao);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -80,9 +80,6 @@ public:
 		glVertexAttribIPointer(2, 1, GL_INT, sizeof(BufferVertex), (void*)offsetof(BufferVertex, bufferIndex));
 		glBindVertexArray(0);
 
-		std::vector<BufferGlyph> bufferGlyphs;
-		std::vector<BufferCurve> bufferCurves;
-
 		{
 			uint32_t charcode = 0;
 			FT_UInt glyphIndex = 0;
@@ -92,7 +89,7 @@ public:
 				// Continue, because we always want an entry for the undefined glyph in our glyphs map!
 			}
 
-			buildGlyph(bufferGlyphs, bufferCurves, charcode, glyphIndex);
+			buildGlyph(charcode, glyphIndex);
 		}
 
 		for (uint32_t charcode = 32; charcode < 128; charcode++) {
@@ -105,16 +102,10 @@ public:
 				continue;
 			}
 
-			buildGlyph(bufferGlyphs, bufferCurves, charcode, glyphIndex);
+			buildGlyph(charcode, glyphIndex);
 		}
 
-		glBindBuffer(GL_TEXTURE_BUFFER, glyphBuffer);
-		glBufferData(GL_TEXTURE_BUFFER, sizeof(BufferGlyph) * bufferGlyphs.size(), bufferGlyphs.data(), GL_STATIC_DRAW);
-		glBindBuffer(GL_TEXTURE_BUFFER, 0);
-
-		glBindBuffer(GL_TEXTURE_BUFFER, curveBuffer);
-		glBufferData(GL_TEXTURE_BUFFER, sizeof(BufferCurve) * bufferCurves.size(), bufferCurves.data(), GL_STATIC_DRAW);
-		glBindBuffer(GL_TEXTURE_BUFFER, 0);
+		uploadBuffers();
 
 		glBindTexture(GL_TEXTURE_BUFFER, glyphTexture);
 		glTexBuffer(GL_TEXTURE_BUFFER, GL_RG32I, glyphBuffer);
@@ -138,8 +129,92 @@ public:
 		glDeleteBuffers(1, &curveBuffer);
 	}
 
+public:
+	void prepareGlyphsForText(const std::string& text) {
+		bool changed = false;
+
+		for (const char* textIt = text.c_str(); *textIt != '\0'; ) {
+			uint32_t charcode = decodeCharcode(&textIt);
+
+			if(glyphs.count(charcode) != 0) continue;
+
+			FT_UInt glyphIndex = FT_Get_Char_Index(face, charcode);
+			if (!glyphIndex) continue;
+
+			FT_Error error = FT_Load_Glyph(face, glyphIndex, FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP);
+			if (error) {
+				std::cerr << "[font] error while loading glyph for character " << charcode << ": " << error << std::endl;
+				continue;
+			}
+
+			buildGlyph(charcode, glyphIndex);
+			changed = true;
+		}
+
+		if (changed) {
+			// Reupload the full buffer contents. To make this even more
+			// dynamic, the buffers could be overallocated and only the added
+			// data could be uploaded.
+			uploadBuffers();
+		}
+	}
+
 private:
-	void buildGlyph(std::vector<BufferGlyph>& bufferGlyphs, std::vector<BufferCurve>& bufferCurves, uint32_t charcode, FT_UInt glyphIndex) {
+	void uploadBuffers() {
+		glBindBuffer(GL_TEXTURE_BUFFER, glyphBuffer);
+		glBufferData(GL_TEXTURE_BUFFER, sizeof(BufferGlyph) * bufferGlyphs.size(), bufferGlyphs.data(), GL_STATIC_DRAW);
+		glBindBuffer(GL_TEXTURE_BUFFER, 0);
+
+		glBindBuffer(GL_TEXTURE_BUFFER, curveBuffer);
+		glBufferData(GL_TEXTURE_BUFFER, sizeof(BufferCurve) * bufferCurves.size(), bufferCurves.data(), GL_STATIC_DRAW);
+		glBindBuffer(GL_TEXTURE_BUFFER, 0);
+	}
+
+	// Decodes the first Unicode code point from the null-terminated UTF-8 string *text and advances *text to point at the next code point.
+	// If the encoding is invalid, advances *text by one byte and returns 0.
+	// *text should not be empty, because it will be advanced past the null terminator.
+	uint32_t decodeCharcode(const char** text) {
+		uint8_t first = static_cast<uint8_t>((*text)[0]);
+
+		// Fast-path for ASCII.
+		if (first < 128) {
+			(*text)++;
+			return static_cast<uint32_t>(first);
+		}
+
+		// This could probably be optimized a bit.
+		uint32_t result;
+		int size;
+		if ((first & 0xE0) == 0xC0) { // 110xxxxx
+			result = first & 0x1F;
+			size = 2;
+		} else if ((first & 0xF0) == 0xE0) { // 1110xxxx
+			result = first & 0x0F;
+			size = 3;
+		} else if ((first & 0xF8) == 0xF0) { // 11110xxx
+			result = first & 0x07;
+			size = 4;
+		} else {
+			// Invalid encoding.
+			(*text)++;
+			return 0;
+		}
+
+		for (int i = 1; i < size; i++) {
+			uint8_t value = static_cast<uint8_t>((*text)[i]);
+			// Invalid encoding (also catches a null terminator in the middle of a code point).
+			if ((value & 0xC0) != 0x80) { // 10xxxxxx
+				(*text)++;
+				return 0;
+			}
+			result = (result << 6) | (value & 0x3F);
+		}
+
+		(*text) += size;
+		return result;
+	}
+
+	void buildGlyph(uint32_t charcode, FT_UInt glyphIndex) {
 		BufferGlyph bufferGlyph;
 		bufferGlyph.start = static_cast<int32_t>(bufferCurves.size());
 
@@ -329,15 +404,15 @@ public:
 		glActiveTexture(GL_TEXTURE0);
 	}
 
-	void draw(float x, float y, std::string text) {
+	void draw(float x, float y, const std::string& text) {
 		glBindVertexArray(vao);
 
 		std::vector<BufferVertex> vertices;
 		std::vector<int32_t> indices;
 
 		FT_UInt previous = 0;
-		for (auto textIt = text.begin(); textIt != text.end(); textIt++) {
-			uint32_t charcode = *textIt; // only support ASCII for now
+		for (const char* textIt = text.c_str(); *textIt != '\0'; ) {
+			uint32_t charcode = decodeCharcode(&textIt);
 
 			auto glyphIt = glyphs.find(charcode);
 			Glyph& glyph = (glyphIt == glyphs.end()) ? glyphs[0] : glyphIt->second;
@@ -383,12 +458,14 @@ public:
 
 private:
 	FT_Face face;
+	float emSize;
 
 	GLuint vao, vbo, ebo;
 	GLuint glyphTexture, curveTexture;
 	GLuint glyphBuffer, curveBuffer;
 
-	float emSize;
+	std::vector<BufferGlyph> bufferGlyphs;
+	std::vector<BufferCurve> bufferCurves;
 	std::unordered_map<uint32_t, Glyph> glyphs;
 
 public:
