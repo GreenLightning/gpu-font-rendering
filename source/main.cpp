@@ -38,8 +38,16 @@ struct Transform {
 };
 
 struct DragController {
+	enum class Action {
+		NONE,
+		TRANSLATE,
+		ROTATE_TURNTABLE,
+		ROTATE_TRACKBALL
+	};
+
 	Transform* transform = nullptr;
 	int activeButton = -1;
+	Action activeAction = Action::NONE;
 
 	double dragX, dragY;
 	double wrapX, wrapY;
@@ -74,6 +82,19 @@ struct DragController {
 	void onMouseButton(GLFWwindow* window, int button, int action, int mods) {
 		if (action == GLFW_PRESS && activeButton == -1) {
 			activeButton = button;
+
+			if (mods & GLFW_MOD_CONTROL) {
+				activeAction = Action::TRANSLATE;
+			} else {
+				if (activeButton == GLFW_MOUSE_BUTTON_2) {
+					activeAction = Action::TRANSLATE;
+				} else if (activeButton == GLFW_MOUSE_BUTTON_3) {
+					activeAction = Action::ROTATE_TURNTABLE;
+				} else {
+					activeAction = Action::ROTATE_TRACKBALL;
+				}
+			}
+
 			glfwGetCursorPos(window, &dragX, &dragY);
 			wrapX = std::numeric_limits<double>::quiet_NaN();
 			wrapY = std::numeric_limits<double>::quiet_NaN();
@@ -85,6 +106,7 @@ struct DragController {
 			dragTarget = ok ? target : glm::vec3();
 		} else if (action == GLFW_RELEASE && activeButton == button) {
 			activeButton = -1;
+			activeAction = Action::NONE;
 			dragX = 0.0;
 			dragY = 0.0;
 			wrapX = std::numeric_limits<double>::quiet_NaN();
@@ -96,7 +118,7 @@ struct DragController {
 	}
 
 	void onCursorPos(GLFWwindow* window, double x, double y) {
-		if (activeButton == -1) return;
+		if (activeAction == Action::NONE) return;
 
 		int iwidth = 0, iheight = 0;
 		glfwGetWindowSize(window, &iwidth, &iheight);
@@ -144,7 +166,7 @@ struct DragController {
 			wrapY = targetY;
 		}
 
-		if (activeButton == GLFW_MOUSE_BUTTON_2) {
+		if (activeAction == Action::TRANSLATE) {
 			virtualX += deltaX;
 			virtualY += deltaY;
 
@@ -157,14 +179,12 @@ struct DragController {
 				transform->position.x = glm::clamp(x + delta.x, -4.0f, 4.0f);
 				transform->position.y = glm::clamp(y + delta.y, -4.0f, 4.0f);
 			}
-		} else if (activeButton == GLFW_MOUSE_BUTTON_3) {
-			// Turntable rotation.
+		} else if (activeAction == Action::ROTATE_TURNTABLE) {
 			double size = glm::min(width, height);
 			glm::mat3 rx = glm::rotate(float(deltaX / size * glm::pi<double>()), glm::vec3(0, 0, 1));
 			glm::mat3 ry = glm::rotate(float(deltaY / size * glm::pi<double>()), glm::vec3(1, 0, 0));
 			transform->rotation = ry * transform->rotation * rx;
-		} else {
-			// Trackball rotation.
+		} else if (activeAction == Action::ROTATE_TRACKBALL) {
 			double size = glm::min(width, height);
 			glm::mat3 rx = glm::rotate(float(deltaX / size * glm::pi<double>()), glm::vec3(0, 1, 0));
 			glm::mat3 ry = glm::rotate(float(deltaY / size * glm::pi<double>()), glm::vec3(1, 0, 0));
