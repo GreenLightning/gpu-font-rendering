@@ -154,8 +154,8 @@ struct DragController {
 				float x = transform->position.x;
 				float y = transform->position.y;
 				glm::vec3 delta = target - dragTarget;
-				transform->position.x = glm::clamp(x + delta.x, -2.0f, 2.0f);
-				transform->position.y = glm::clamp(y + delta.y, -2.0f, 2.0f);
+				transform->position.x = glm::clamp(x + delta.x, -4.0f, 4.0f);
+				transform->position.y = glm::clamp(y + delta.y, -4.0f, 4.0f);
 			}
 		} else if (activeButton == GLFW_MOUSE_BUTTON_3) {
 			// Turntable rotation.
@@ -194,7 +194,33 @@ namespace {
 
 	std::unique_ptr<Font> font;
 
-	std::string text = "Hello, world! äöü";
+	Font::BoundingBox bb;
+	std::string text = 
+R"DONE(In the center of Fedora, that gray stone metropolis, stands a metal building
+with a crystal globe in every room. Looking into each globe, you see a blue
+city, the model of a different Fedora. These are the forms the city could have
+taken if, for one reason or another, it had not become what we see today. In
+every age someone, looking at Fedora as it was, imagined a way of making it the
+ideal city, but while he constructed his miniature model, Fedora was already no
+longer the same as before, and what had been until yesterday a possible future
+became only a toy in a glass globe.
+
+The building with the globes is now Fedora's museum: every inhabitant visits it,
+chooses the city that corresponds to his desires, contemplates it, imagining his
+reflection in the medusa pond that would have collected the waters of the canal
+(if it had not been dried up), the view from the high canopied box along the
+avenue reserved for elephants (now banished from the city), the fun of sliding
+down the spiral, twisting minaret (which never found a pedestal from which to
+rise).
+
+On the map of your empire, O Great Khan, there must be room both for the big,
+stone Fedora and the little Fedoras in glass globes. Not because they are all
+equally real, but because they are only assumptions. The one contains what is
+accepted as necessary when it is not yet so; the others, what is imagined as
+possible and, a moment later, is possible no longer.
+
+[from Invisible Cities by Italo Calvino])DONE";
+
 }
 
 static void loadFont(const std::string& filename) {
@@ -208,9 +234,10 @@ static void loadFont(const std::string& filename) {
 	font = std::make_unique<Font>(face);
 
 	font->dilation = 0.1f;
-	font->worldSize = 0.2f;
+	font->worldSize = 0.05f;
 
 	font->prepareGlyphsForText(text);
+	bb = font->measure(0, 0, text);
 }
 
 static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
@@ -329,7 +356,9 @@ int main(int argc, char* argv[]) {
 			location = glGetUniformLocation(program, "color");
 			glUniform4f(location, 1.0f, 1.0f, 1.0f, 1.0f);
 
-			font->draw(0, 0, text);
+			float cx = 0.5f * (bb.minX + bb.maxX);
+			float cy = 0.5f * (bb.minY + bb.maxY);
+			font->draw(-cx, -cy, text);
 			glUseProgram(0);
 		}
 

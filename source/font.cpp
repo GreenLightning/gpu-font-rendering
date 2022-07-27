@@ -136,6 +136,7 @@ public:
 		for (const char* textIt = text.c_str(); *textIt != '\0'; ) {
 			uint32_t charcode = decodeCharcode(&textIt);
 
+			if (charcode == '\r' || charcode == '\n') continue;
 			if(glyphs.count(charcode) != 0) continue;
 
 			FT_UInt glyphIndex = FT_Get_Char_Index(face, charcode);
@@ -405,6 +406,8 @@ public:
 	}
 
 	void draw(float x, float y, const std::string& text) {
+		float originalX = x;
+		
 		glBindVertexArray(vao);
 
 		std::vector<BufferVertex> vertices;
@@ -413,6 +416,14 @@ public:
 		FT_UInt previous = 0;
 		for (const char* textIt = text.c_str(); *textIt != '\0'; ) {
 			uint32_t charcode = decodeCharcode(&textIt);
+
+			if (charcode == '\r') continue;
+
+			if (charcode == '\n') {
+				x = originalX;
+				y -= (float) face->height / emSize * worldSize;
+				continue;
+			}
 
 			auto glyphIt = glyphs.find(charcode);
 			Glyph& glyph = (glyphIt == glyphs.end()) ? glyphs[0] : glyphIt->second;
@@ -454,6 +465,65 @@ public:
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
 
 		glBindVertexArray(0);
+	}
+
+	struct BoundingBox {
+		float minX, minY, maxX, maxY;
+	};
+
+	BoundingBox measure(float x, float y, const std::string& text) {
+		BoundingBox bb;
+		bb.minX = +std::numeric_limits<float>::infinity();
+		bb.minY = +std::numeric_limits<float>::infinity();
+		bb.maxX = -std::numeric_limits<float>::infinity();
+		bb.maxY = -std::numeric_limits<float>::infinity();
+
+		float originalX = x;
+		
+		FT_UInt previous = 0;
+		for (const char* textIt = text.c_str(); *textIt != '\0'; ) {
+			uint32_t charcode = decodeCharcode(&textIt);
+
+			if (charcode == '\r') continue;
+
+			if (charcode == '\n') {
+				x = originalX;
+				y -= (float) face->height / emSize * worldSize;
+				continue;
+			}
+
+			auto glyphIt = glyphs.find(charcode);
+			Glyph& glyph = (glyphIt == glyphs.end()) ? glyphs[0] : glyphIt->second;
+
+			if (previous != 0 && glyph.index != 0) {
+				FT_Vector kerning;
+				FT_Error error = FT_Get_Kerning(face, previous, glyph.index, FT_KERNING_UNSCALED, &kerning);
+				if (!error) {
+					x += (float)kerning.x / emSize * worldSize;
+				}
+			}
+
+			// Note: Do not apply dilation here, we want to calculate exact bounds.
+			float u0 = (float)(glyph.bearingX) / emSize;
+			float v0 = (float)(glyph.bearingY-glyph.height) / emSize;
+			float u1 = (float)(glyph.bearingX+glyph.width) / emSize;
+			float v1 = (float)(glyph.bearingY) / emSize;
+
+			float x0 = x + u0 * worldSize;
+			float y0 = y + v0 * worldSize;
+			float x1 = x + u1 * worldSize;
+			float y1 = y + v1 * worldSize;
+
+			if (x0 < bb.minX) bb.minX = x0;
+			if (y0 < bb.minY) bb.minY = y0;
+			if (x1 > bb.maxX) bb.maxX = x1;
+			if (y1 > bb.maxY) bb.maxY = y1;
+
+			x += (float)glyph.advance / emSize * worldSize;
+			previous = glyph.index;
+		}
+
+		return bb;
 	}
 
 private:
