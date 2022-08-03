@@ -74,12 +74,12 @@ float computeCoverage(float inverseDiameter, vec2 p0, vec2 p1, vec2 p2) {
 	
 	if (t0 >= 0 && t0 < 1) {
 		float x = (a.x*t0 - 2.0*b.x)*t0 + c.x;
-		alpha -= clamp(0.5 - x * inverseDiameter, 0, 1);
+		alpha += clamp(x * inverseDiameter + 0.5, 0, 1);
 	}
 
 	if (t1 >= 0 && t1 < 1) {
 		float x = (a.x*t1 - 2.0*b.x)*t1 + c.x;
-		alpha += clamp(0.5 - x * inverseDiameter, 0, 1);
+		alpha -= clamp(x * inverseDiameter + 0.5, 0, 1);
 	}
 
 	return alpha;
