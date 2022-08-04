@@ -246,26 +246,64 @@ private:
 	// lastIndex, both inclusive) from outline and converts it into individual
 	// quadratic bezier curves, which are added to the curves vector.
 	void convertContour(std::vector<BufferCurve>& curves, const FT_Outline* outline, short firstIndex, short lastIndex, float emSize) {
-		// TrueType fonts only contain quadratic bezier curves.
-		// OpenType fonts may contain outline data in TrueType format
-		// or in Compact Font Format, which also allows cubic beziers.
-
-		// Each point in the contour has a tag specifying whether the point is
-		// on the curve or not (off-curve points are control points).
-		// A quadratic bezier curve is formed by three points: on - off - on.
-		// A contour is a list of points that define a closed bezier spline (the
-		// start point of a curve is the end point of the previous curve and the
-		// end point of the last curve is the start point of the first curve).
-
-		// Two consecutive points with the same type imply a virtual point of
-		// the opposite type at their center. For example a line segment is
-		// encoded as: on - on. Adding a virtual control point at the center
-		// of the two endpoints (on - (off) - on) creates a quadratic bezier
-		// curve representing the same line segment. Similarly, two consecutive
-		// off points imply a virtual on point, so the sequence
-		// on - off - off - on is expanded to on - off - (on) - off - on and
-		// defines a chain of two bezier curves sharing the virtual point as one
-		// of their end points.
+		// See https://freetype.org/freetype2/docs/glyphs/glyphs-6.html
+		// for a detailed description of the outline format.
+		//
+		// In short, a contour is a list of points describing line segments
+		// and quadratic or cubic bezier curves that form a closed shape.
+		//
+		// TrueType fonts only contain quadratic bezier curves. OpenType fonts
+		// may contain outline data in TrueType format or in Compact Font
+		// Format, which also allows cubic beziers. However, in FreeType it is
+		// (theoretically) possible to mix the two types of bezier curves, so
+		// we handle both at the same time.
+		//
+		// Each point in the contour has a tag specifying its type
+		// (FT_CURVE_TAG_ON, FT_CURVE_TAG_CONIC or FT_CURVE_TAG_CUBIC).		
+		// FT_CURVE_TAG_ON points sit exactly on the outline, whereas the
+		// other types are control points for quadratic/conic bezier curves,
+		// which in general do not sit exactly on the outline and are also
+		// called off points.
+		//
+		// Some examples of the basic segments:
+		// ON - ON ... line segment
+		// ON - CONIC - ON ... quadratic bezier curve
+		// ON - CUBIC - CUBIC - ON ... cubic bezier curve
+		//
+		// Cubic bezier curves must always be described by two CUBIC points
+		// inbetween two ON points. For the points used in the TrueType format
+		// (ON, CONIC) there is a special rule, that two consecutive points of
+		// the same type imply a virtual point of the opposite type at their
+		// exact midpoint.
+		//
+		// For example the sequence ON - CONIC - CONIC - ON describes two
+		// quadratic bezier curves where virtual point forms the joining
+		// end point of the two curves: ON - CONIC - [ON] - CONIC - ON.
+		//
+		// Similarly the sequence ON - ON can be thought of as a line segment
+		// or a quadratic bezier curve (ON - [CONIC] - ON). Because the
+		// virtual point is at the exact middle of the two endpoints, the
+		// bezier curve is identical to the line segment.
+		//
+		// The font shader only supports quadratic bezier curves, so we use
+		// this virtual point rule to represent line segments as quadratic
+		// bezier curves.
+		//
+		// Cubic bezier curves are slightly more difficult, since they have a
+		// higher degree than the shader supports. Each cubic curve is
+		// approximated by two quadratic curves according to the following
+		// paper. This preserves C1-continuity (location of and tangents at
+		// the end points of the cubic curve) and the paper even proves that
+		// splitting at the parametric center minimizes the error due to the
+		// degree reduction. One could also analyze the approximation error
+		// and split the cubic curve, if the error is too large. However,
+		// almost all fonts use "nice" cubic curves, resulting in very small
+		// errors already (see also the section on Font Design in the paper).
+		//
+		// Quadratic Approximation of Cubic Curves
+		// Nghia Truong, Cem Yuksel, Larry Seiler
+		// https://ttnghia.github.io/pdf/QuadraticApproximation.pdf
+		// https://doi.org/10.1145/3406178
 
 		if (firstIndex == lastIndex) return;
 
