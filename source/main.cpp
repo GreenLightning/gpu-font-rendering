@@ -54,6 +54,15 @@ struct DragController {
 	double virtualX, virtualY;
 	glm::vec3 dragTarget;
 
+	void reset() {
+		// Reset transform.
+		*transform = Transform{};
+
+		// Cancel active action, if any.
+		activeButton = -1;
+		activeAction = Action::NONE;
+	}
+
 	bool unprojectMousePositionToXYPlane(GLFWwindow* window, double x, double y, glm::vec3& result) {
 		int iwidth = 0, iheight = 0;
 		glfwGetWindowSize(window, &iwidth, &iheight);
@@ -214,6 +223,10 @@ namespace {
 
 	std::unique_ptr<Font> font;
 
+	int antiAliasingWindowSize = 1;
+	bool enableSuperSamplingAntiAliasing = true;
+	bool enableControlPointsVisualization = false;
+
 	Font::BoundingBox bb;
 	std::string text = 
 R"DONE(In the center of Fedora, that gray stone metropolis, stands a metal building
@@ -272,6 +285,44 @@ static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset) {
 	dragController.onScroll(window, xOffset, yOffset);
 }
 
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+	if (action != GLFW_PRESS) return;
+	switch (key) {
+		case GLFW_KEY_R:
+			dragController.reset();
+			break;
+
+		case GLFW_KEY_C:
+			enableControlPointsVisualization = !enableControlPointsVisualization;
+			break;
+
+		case GLFW_KEY_A:
+			enableSuperSamplingAntiAliasing = !enableSuperSamplingAntiAliasing;
+			break;
+
+		case GLFW_KEY_0:
+			antiAliasingWindowSize = 0;
+			break;
+
+		case GLFW_KEY_1:
+			antiAliasingWindowSize = 1;
+			break;
+
+		case GLFW_KEY_2:
+			antiAliasingWindowSize = 20;
+			break;
+
+		case GLFW_KEY_3:
+			antiAliasingWindowSize = 40;
+			break;
+
+		case GLFW_KEY_S:
+			antiAliasingWindowSize = 1;
+			enableSuperSamplingAntiAliasing = true;
+			break;
+	}
+}
+
 static void dropCallback(GLFWwindow* window, int pathCount, const char* paths[]) {
 	if (pathCount == 0) return;
 	loadFont(paths[0]);
@@ -317,6 +368,7 @@ int main(int argc, char* argv[]) {
 	glfwSetMouseButtonCallback(window, mouseButtonCallback);
 	glfwSetCursorPosCallback(window, cursorPosCallback);
 	glfwSetScrollCallback(window, scrollCallback);
+	glfwSetKeyCallback(window, keyCallback);
 	glfwSetDropCallback(window, dropCallback);
 
 	glGenVertexArrays(1, &emptyVAO);
@@ -375,6 +427,13 @@ int main(int argc, char* argv[]) {
 
 			location = glGetUniformLocation(program, "color");
 			glUniform4f(location, 1.0f, 1.0f, 1.0f, 1.0f);
+
+			location = glGetUniformLocation(program, "antiAliasingWindowSize");
+			glUniform1f(location, (float) antiAliasingWindowSize);
+			location = glGetUniformLocation(program, "enableSuperSamplingAntiAliasing");
+			glUniform1i(location, enableSuperSamplingAntiAliasing);
+			location = glGetUniformLocation(program, "enableControlPointsVisualization");
+			glUniform1i(location, enableControlPointsVisualization);
 
 			float cx = 0.5f * (bb.minX + bb.maxX);
 			float cy = 0.5f * (bb.minY + bb.maxY);

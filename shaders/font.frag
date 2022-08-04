@@ -14,6 +14,22 @@ uniform isamplerBuffer glyphs;
 uniform samplerBuffer curves;
 uniform vec4 color;
 
+
+// Controls for debugging and exploring:
+
+// Size of the window (in pixels) used for 1-dimensional anti-aliasing along each rays.
+//   0 - no anti-aliasing
+//   1 - normal anti-aliasing
+// >=2 - exaggerated effect 
+uniform float antiAliasingWindowSize = 1.0;
+
+// Enable a second ray along the y-axis to achieve 2-dimensional anti-aliasing.
+uniform bool enableSuperSamplingAntiAliasing = true;
+
+// Draw control points for debugging (green - on curve, magenta - off curve).
+uniform bool enableControlPointsVisualization = false;
+
+
 in vec2 uv;
 flat in int bufferIndex;
 
@@ -85,11 +101,15 @@ float computeCoverage(float inverseDiameter, vec2 p0, vec2 p1, vec2 p2) {
 	return alpha;
 }
 
+vec2 rotate(vec2 v) {
+	return vec2(v.y, -v.x);
+}
+
 void main() {
 	float alpha = 0;
 
 	// Inverse of the diameter of a pixel in uv units for anti-aliasing.
-	vec2 inverseDiameter = 1.0 / fwidth(uv);
+	vec2 inverseDiameter = 1.0 / (antiAliasingWindowSize * fwidth(uv));
 
 	Glyph glyph = loadGlyph(bufferIndex);
 	for (int i = 0; i < glyph.count; i++) {
@@ -100,13 +120,19 @@ void main() {
 		vec2 p2 = curve.p2 - uv;
 
 		alpha += computeCoverage(inverseDiameter.x, p0, p1, p2);
-		alpha -= computeCoverage(inverseDiameter.y, p0.yx, p1.yx, p2.yx);
+		if (enableSuperSamplingAntiAliasing) {
+			alpha += computeCoverage(inverseDiameter.y, rotate(p0), rotate(p1), rotate(p2));
+		}
 	}
 
-	alpha = clamp(0.5 * alpha, 0.0, 1.0);
+	if (enableSuperSamplingAntiAliasing) {
+		alpha *= 0.5;
+	}
+
+	alpha = clamp(alpha, 0.0, 1.0);
 	result = color * alpha;
 
-	if (false) {
+	if (enableControlPointsVisualization) {
 		// Visualize control points.
 		vec2 fw = fwidth(uv);
 		float r = 4.0 * 0.5 * (fw.x + fw.y);
