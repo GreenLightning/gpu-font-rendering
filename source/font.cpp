@@ -30,7 +30,7 @@ class Font {
 
 public:
 	static FT_Face loadFace(FT_Library library, const std::string& filename, std::string& error) {
-		FT_Face face;
+		FT_Face face = NULL;
 
 		FT_Error ftError = FT_New_Face(library, filename.c_str(), 0, &face);
 		if (ftError) {
@@ -44,12 +44,13 @@ public:
 				stream << "Error " << ftError;
 				error = stream.str();
 			}
-			return face;
+			return NULL;
 		}
 
 		if (!(face->face_flags & FT_FACE_FLAG_SCALABLE)) {
 			error = "non-scalable fonts are not supported";
-			return face;
+			FT_Done_Face(face);
+			return NULL;
 		}
 
 		return face;
@@ -127,6 +128,8 @@ public:
 
 		glDeleteBuffers(1, &glyphBuffer);
 		glDeleteBuffers(1, &curveBuffer);
+
+		FT_Done_Face(face);
 	}
 
 public:

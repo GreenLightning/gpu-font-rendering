@@ -221,14 +221,14 @@ namespace {
 	std::shared_ptr<ShaderCatalog::Entry> backgroundShader;
 	std::shared_ptr<ShaderCatalog::Entry> fontShader;
 
-	std::unique_ptr<Font> font;
+	std::unique_ptr<Font> mainFont;
 
 	int antiAliasingWindowSize = 1;
 	bool enableSuperSamplingAntiAliasing = true;
 	bool enableControlPointsVisualization = false;
 
 	Font::BoundingBox bb;
-	std::string text = 
+	std::string mainText = 
 R"DONE(In the center of Fedora, that gray stone metropolis, stands a metal building
 with a crystal globe in every room. Looking into each globe, you see a blue
 city, the model of a different Fedora. These are the forms the city could have
@@ -256,21 +256,28 @@ possible and, a moment later, is possible no longer.
 
 }
 
-static void loadFont(const std::string& filename) {
+static std::unique_ptr<Font> loadFont(const std::string& filename) {
 	std::string error;
 	FT_Face face = Font::loadFace(library, filename, error);
 	if (error != "") {
 		std::cerr << "[font] failed to load " << filename << ": " << error << std::endl;
-		return;
+		return std::unique_ptr<Font>{};
 	}
 
-	font = std::make_unique<Font>(face);
+	return std::make_unique<Font>(face);
+}
+
+static void tryUpdateMainFont(const std::string& filename) {
+	auto font = loadFont(filename);
+	if (!font) return;
 
 	font->dilation = 0.1f;
 	font->worldSize = 0.05f;
 
-	font->prepareGlyphsForText(text);
-	bb = font->measure(0, 0, text);
+	font->prepareGlyphsForText(mainText);
+
+	mainFont = std::move(font);
+	bb = mainFont->measure(0, 0, mainText);
 }
 
 static void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
@@ -325,7 +332,7 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 
 static void dropCallback(GLFWwindow* window, int pathCount, const char* paths[]) {
 	if (pathCount == 0) return;
-	loadFont(paths[0]);
+	tryUpdateMainFont(paths[0]);
 }
 
 int main(int argc, char* argv[]) {
@@ -377,7 +384,7 @@ int main(int argc, char* argv[]) {
 	backgroundShader = shaderCatalog->get("background");
 	fontShader = shaderCatalog->get("font");
 
-	loadFont("fonts/SourceSerifPro-Regular.otf");
+	tryUpdateMainFont("fonts/SourceSerifPro-Regular.otf");
 
 	while(!glfwWindowShouldClose(window)) {
 		shaderCatalog->update();
@@ -411,12 +418,12 @@ int main(int argc, char* argv[]) {
 		glBlendEquation(GL_FUNC_ADD);
 		glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-		if (font) {
+		if (mainFont) {
 			GLuint program = fontShader->program;
 			glUseProgram(program);
 
-			font->program = program;
-			font->drawSetup();
+			mainFont->program = program;
+			mainFont->drawSetup();
 
 			location = glGetUniformLocation(program, "projection");
 			glUniformMatrix4fv(location, 1, false, glm::value_ptr(projection));
@@ -437,7 +444,7 @@ int main(int argc, char* argv[]) {
 
 			float cx = 0.5f * (bb.minX + bb.maxX);
 			float cy = 0.5f * (bb.minY + bb.maxY);
-			font->draw(-cx, -cy, text);
+			mainFont->draw(-cx, -cy, mainText);
 			glUseProgram(0);
 		}
 
