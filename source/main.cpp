@@ -222,10 +222,13 @@ namespace {
 	std::shared_ptr<ShaderCatalog::Entry> fontShader;
 
 	std::unique_ptr<Font> mainFont;
+	std::unique_ptr<Font> helpFont;
 
 	int antiAliasingWindowSize = 1;
 	bool enableSuperSamplingAntiAliasing = true;
 	bool enableControlPointsVisualization = false;
+
+	bool showHelp = true;
 
 	Font::BoundingBox bb;
 	std::string mainText = 
@@ -327,6 +330,10 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 			antiAliasingWindowSize = 1;
 			enableSuperSamplingAntiAliasing = true;
 			break;
+
+		case GLFW_KEY_H:
+			showHelp = !showHelp;
+			break;
 	}
 }
 
@@ -385,6 +392,7 @@ int main(int argc, char* argv[]) {
 	fontShader = shaderCatalog->get("font");
 
 	tryUpdateMainFont("fonts/SourceSerifPro-Regular.otf");
+	helpFont = loadFont("fonts/SourceSansPro-Semibold.otf");
 
 	while(!glfwWindowShouldClose(window)) {
 		shaderCatalog->update();
@@ -445,6 +453,63 @@ int main(int argc, char* argv[]) {
 			float cx = 0.5f * (bb.minX + bb.maxX);
 			float cy = 0.5f * (bb.minY + bb.maxY);
 			mainFont->draw(-cx, -cy, mainText);
+			glUseProgram(0);
+		}
+
+		if (helpFont && showHelp) {
+			GLuint program = fontShader->program;
+			glUseProgram(program);
+
+			helpFont->program = program;
+			helpFont->drawSetup();
+
+			glm::mat4 projection = glm::ortho(0.0f, (float) width, 0.0f, (float) height, -1.0f, 1.0f);
+			glm::mat4 view = glm::mat4(1.0f);
+			glm::mat4 model = glm::mat4(1.0f);
+
+			location = glGetUniformLocation(program, "projection");
+			glUniformMatrix4fv(location, 1, false, glm::value_ptr(projection));
+			location = glGetUniformLocation(program, "view");
+			glUniformMatrix4fv(location, 1, false, glm::value_ptr(view));
+			location = glGetUniformLocation(program, "model");
+			glUniformMatrix4fv(location, 1, false, glm::value_ptr(model));
+
+			location = glGetUniformLocation(program, "color");
+			float r = 200, g = 35, b = 220, a = 0.8;
+			glUniform4f(location, r * a / 255.0f, g * a / 255.0f, b * a / 255.0f, a);
+
+			location = glGetUniformLocation(program, "antiAliasingWindowSize");
+			glUniform1f(location, 1.0f);
+			location = glGetUniformLocation(program, "enableSuperSamplingAntiAliasing");
+			glUniform1i(location, true);
+			location = glGetUniformLocation(program, "enableControlPointsVisualization");
+			glUniform1i(location, false);
+
+			std::stringstream stream;
+			stream << "Drag and drop a .ttf or .otf file to change the font\n";
+			stream << "\n";
+			stream << "right drag (or CTRL drag) - move\n";
+			stream << "left drag - trackball rotate\n";
+			stream << "middle drag - turntable rotate\n";
+			stream << "scroll wheel - zoom\n";
+			stream << "\n";
+			stream << "0, 1, 2, 3 - change anti-aliasing window size: " << antiAliasingWindowSize << " pixel" << ((antiAliasingWindowSize != 1) ? "s" : "") << "\n";
+			stream << glfwGetKeyName(GLFW_KEY_A, 0) << " - " << (enableSuperSamplingAntiAliasing ? "disable" : "enable") << " 2D anti-aliasing\n";
+			stream << "(using another ray along the y-axis)\n";
+			stream << glfwGetKeyName(GLFW_KEY_S, 0) << " - reset anti-aliasing settings\n";
+			stream << glfwGetKeyName(GLFW_KEY_C, 0) << " - " << (enableControlPointsVisualization ? "disable" : "enable") << " control points\n";
+			stream << glfwGetKeyName(GLFW_KEY_R, 0) << " - reset view\n";
+			stream << glfwGetKeyName(GLFW_KEY_H, 0) << " - toggle help\n";
+
+			std::string helpText = stream.str();
+			helpFont->prepareGlyphsForText(helpText);
+
+			float xscale, yscale;
+			glfwGetWindowContentScale(window, &xscale, &yscale);
+			helpFont->worldSize = std::ceil(20.0f * yscale);
+
+			auto bb = helpFont->measure(0, 0, helpText);
+			helpFont->draw(10 - bb.minX, height - 10 - bb.maxY, helpText);
 			glUseProgram(0);
 		}
 
