@@ -35,3 +35,37 @@ but the implementation first calculates any intersection with the x-axis and the
 so it does not change much.)
 For full anti-aliasing we can use multiple rays along different directions (e.g. one along the x-axis and one along the y-axis).
 
+## Build Instructions
+
+#### 1. Init submodules
+
+Clone the project recursively to initialize the submodules for the dependencies
+(or run `git submodule update --init` if you have already cloned the repo):
+
+```
+git clone --recursive https://github.com/GreenLightning/gpu-font-rendering.git
+cd gpu-font-rendering
+```
+
+#### 2. Use CMake
+
+```
+# Note: CMake will create the build directory.
+cmake -S . -B build
+make -j8 --directory build
+```
+
+On Windows you might want to use CMake GUI and/or Visual Studio instead.
+
+#### 3. Run from the main project directory
+
+```
+./build/main
+```
+
+The program requires the `fonts` and `shaders` directories to be in
+the current directory to load its resources.
+**If you only get a black window**, this is most likely the issue.
+Check your working directory and check the console for errors.
+
+*Tested on Windows 10 and MacOS Monterey.*
