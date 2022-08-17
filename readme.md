@@ -2,6 +2,7 @@
 
 This is a demonstration of rendering text directly on the GPU using the vector outlines defined by the font.
 
+![demonstration image](images/demo.png)
 
 This demo is based with some modifications on the method described by Will Dobbie in [GPU text rendering with vector textures](http://wdobbie.com/post/gpu-text-rendering-with-vector-textures/).
 Other related work includes
