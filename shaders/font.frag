@@ -72,10 +72,9 @@ float computeCoverage(float inverseDiameter, vec2 p0, vec2 p1, vec2 p2) {
 	} else {
 		// Linear segment, avoid division by a.y, which is near zero.
 		// There is only one root, so we have to decide which variable to
-		// assign it to based on the direction of the segment.
-		// For a quadratic segment this works 'automatically', because the
-		// signs in the solution ensure that t0 < t1 and the t values encode
-		// the direction of the curve.
+		// assign it to based on the direction of the segment, to ensure that
+		// the ray always exits the shape at t0 and enters at t1. For a
+		// quadratic segment this works 'automatically', see readme.
 		float t = p0.y / (p0.y - p2.y);
 		if (p0.y < p2.y) {
 			t0 = -1.0;
