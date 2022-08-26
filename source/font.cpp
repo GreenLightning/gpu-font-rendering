@@ -280,7 +280,7 @@ private:
 		// exact midpoint.
 		//
 		// For example the sequence ON - CONIC - CONIC - ON describes two
-		// quadratic bezier curves where virtual point forms the joining
+		// quadratic bezier curves where the virtual point forms the joining
 		// end point of the two curves: ON - CONIC - [ON] - CONIC - ON.
 		//
 		// Similarly the sequence ON - ON can be thought of as a line segment
