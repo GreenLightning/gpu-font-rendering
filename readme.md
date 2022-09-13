@@ -4,11 +4,11 @@ This is a demonstration of rendering text directly on the GPU using the vector o
 
 ![demonstration image](images/demo.png)
 
-This demo is based with some modifications on the method described by Will Dobbie in [GPU text rendering with vector textures](http://wdobbie.com/post/gpu-text-rendering-with-vector-textures/).
+This demo is based on the method described by Will Dobbie in [GPU text rendering with vector textures](http://wdobbie.com/post/gpu-text-rendering-with-vector-textures/)
+with some modifications/simplifications based on publications from Eric Lengyel ([GPU Font Rendering: Current State of the Art](http://terathon.com/font_rendering_sota_lengyel.pdf), [Poster](https://sluglibrary.com/slug_algorithm.pdf) for the [Slug Font Rendering Library](https://sluglibrary.com/), [Slug Algorithm Paper](https://jcgt.org/published/0006/02/02/)).
 Other related work includes
-[Improved Alpha-Tested Magnification for Vector Textures and Special Effects](https://dl.acm.org/doi/10.1145/1281500.1281665) (signed distance fields) by Chris Green,
-[Easy Scalable Text Rendering on the GPU](https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac) by Evan Wallace
-and the [Slug Algorithm](https://jcgt.org/published/0006/02/02/) and [Slug Font Rendering Library](https://sluglibrary.com/) by Eric Lengyel.
+[Improved Alpha-Tested Magnification for Vector Textures and Special Effects](https://dl.acm.org/doi/10.1145/1281500.1281665) (signed distance fields) by Chris Green and
+[Easy Scalable Text Rendering on the GPU](https://medium.com/@evanwallace/easy-scalable-text-rendering-on-the-gpu-c3f4d782c5ac) by Evan Wallace.
 
 This technique is useful for rendering large text or rendering text with arbitrary transforms (e.g. in a 3D scene) and produces pixel-perfect and anti-aliased results.
 It has a slightly higher GPU runtime cost, but does not require rasterizing glyphs on the CPU.
@@ -81,8 +81,8 @@ $t_0$ is always an exit and the $t_1$ is always an entry.
 
 A different approach to understanding this relationship is to notice, that,
 because of the different signs used in the solutions and the square root being non-negative,
-$t_0$ has to come first along the curve ($t_0 <= t_1$), if $a > 0$.
-Conversely, if $a < 0$ then the order is reversed and $t_1$ has to come first ($t_1 <= t_0$).
+$t_0$ has to come first along the curve $(t_0 <= t_1)$, if $a > 0$.
+Conversely, if $a < 0$ then the order is reversed and $t_1$ has to come first $(t_1 <= t_0)$.
 The parameter $a$ can be rewritten as $2(\frac{\textrm{y}_0 + \textrm{y}_2}{2} - \textrm{y}_1)$,
 so its sign depends on whether the second control point is above or below the midpoint of the first and third control point.
 The following figure shows that the solutions are always correctly classified for all combinations of the direction of the curve and the sign of parameter $a$.
