@@ -17,10 +17,16 @@ In contrast to signed distance fields, it preserves sharp corners at all scales.
 ## Method
 
 A glyph outline is described by one or more closed contours.
+A contour consists of line segments and bezier curve segments defined by a list of points.
 Following the TrueType convention, outside contours are oriented in clockwise direction and inside contours are oriented in counterclockwise direction.
 In other words, when following the direction of the contour, the filled area is always to the right.
 
-The contours of a glyph are converted into a list of individual quadratic bezier curves, which are uploaded to the GPU.
+![contour orientations](images/contour2.svg)
+
+The contours of a glyph are converted into a list of individual quadratic bezier curves (defined by their control points), which are uploaded to the GPU.
+
+![contour splitting](images/contour3.svg)
+
 A quad is generated for each glyph and the pixel shader determines whether each pixel is inside or outside the glyph.
 To do this, the winding number of the pixel is calculated by intersecting a ray with the bezier curves.
 At every intersection the ray either enters or exits the filled area as determined by the direction of the bezier curve relative to the ray.
