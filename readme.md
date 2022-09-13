@@ -33,6 +33,8 @@ At every intersection the ray either enters or exits the filled area as determin
 At every exit the winding number is increased by one and at every entry the winding number is decreased by one.
 After considering all intersections, the winding number will be non-zero if the pixel is inside the outline.
 
+![winding number computation](images/ray1.svg)
+
 The direction of the rays does not matter for this winding number computation,
 but the math can be greatly simplified by using rays parallel to the x-axis.
 By subtracting the sample position from the control points of the bezier curves,
