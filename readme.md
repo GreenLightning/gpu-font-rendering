@@ -101,6 +101,9 @@ Conversely, if $a < 0$, then the order is reversed and $t_1$ has to come first $
 The parameter $a$ can be rewritten as $2(\frac{\textrm{y}_0 + \textrm{y}_2}{2} - \textrm{y}_1)$,
 so its sign depends on whether the second control point is above or below the midpoint of the first and third control point.
 The following figure shows that the solutions are always correctly classified for all combinations of the direction of the curve and the sign of parameter $a$.
+Notice how the order of the solutions along the curve changes, but the ray always enters at a $t_1$ solution and exits at a $t_0$ solution.
+
+![order of solutions depending on parameter a](images/order.svg)
 
 If the parameter $a$ is 0 (or sufficiently small in floating-point calculations), there is a linear relationship between $t$ and $y$
 (this is true for linear segments, but also for some non-linear curves; see figure below),
