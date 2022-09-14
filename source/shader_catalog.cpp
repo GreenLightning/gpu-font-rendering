@@ -94,11 +94,22 @@ private:
 		std::string fragmentData = readFile(dir + "/" + name + ".frag", error);
 		if (error != "") return 0;
 
+		GLint success = 0;
+
 		const char* vertexSource = vertexData.c_str();
 		GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 		defer { glDeleteShader(vertexShader); };
 		glShaderSource(vertexShader, 1, &vertexSource, nullptr);
 		glCompileShader(vertexShader);
+
+		glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
+		if (!success) {
+			char log [1024];
+			GLsizei length = 0;
+			glGetShaderInfoLog(vertexShader, sizeof(log), &length, log);
+			error = "failed to compile vertex shader " + name + ":\n\n" + log;
+			return 0;
+		}
 
 		const char* fragmentSource = fragmentData.c_str();
 		GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -106,12 +117,20 @@ private:
 		glShaderSource(fragmentShader, 1, &fragmentSource, nullptr);
 		glCompileShader(fragmentShader);
 
+		glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
+		if (!success) {
+			char log [1024];
+			GLsizei length = 0;
+			glGetShaderInfoLog(fragmentShader, sizeof(log), &length, log);
+			error = "failed to compile fragment shader " + name + ":\n\n" + log;
+			return 0;
+		}
+
 		GLuint program = glCreateProgram();
 		glAttachShader(program, vertexShader);
 		glAttachShader(program, fragmentShader);
 		glLinkProgram(program);
 
-		GLint success = 0;
 		glGetProgramiv(program, GL_LINK_STATUS, &success);
 		if (!success) {
 			char log [1024];
