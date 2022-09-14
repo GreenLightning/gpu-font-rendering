@@ -52,8 +52,8 @@ Curve loadCurve(int index) {
 }
 
 float computeCoverage(float inverseDiameter, vec2 p0, vec2 p1, vec2 p2) {
-	if (p0.y > 0 && p1.y > 0 && p2.y > 0) return 0;
-	if (p0.y < 0 && p1.y < 0 && p2.y < 0) return 0;
+	if (p0.y > 0 && p1.y > 0 && p2.y > 0) return 0.0;
+	if (p0.y < 0 && p1.y < 0 && p2.y < 0) return 0.0;
 
 	// Note: Simplified from abc formula by extracting a factor of (-2) from b.
 	vec2 a = p0 - 2*p1 + p2;
@@ -64,7 +64,7 @@ float computeCoverage(float inverseDiameter, vec2 p0, vec2 p1, vec2 p2) {
 	if (abs(a.y) >= 1e-5) {
 		// Quadratic segment, solve abc formula to find roots.
 		float radicand = b.y*b.y - a.y*c.y;
-		if (radicand <= 0) return 0;
+		if (radicand <= 0) return 0.0;
 	
 		float s = sqrt(radicand);
 		t0 = (b.y - s) / a.y;
