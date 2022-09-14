@@ -55,16 +55,19 @@ $$ (1-t)^2 \textrm{y}_0 + 2(1-t)t \textrm{y}_1 + t^2 \textrm{y}_2 = 0 $$
 Which can be rearranged into:
 
 $$ \textrm{y}_0 -2t \textrm{y}_0 + t^2 \textrm{y}_0 + 2t \textrm{y}_1 - 2t^2 \textrm{y}_1 + t^2 \textrm{y}_2 = 0 $$
+
 $$ (\textrm{y}_0 - 2\textrm{y}_1 + \textrm{y}_2) t^2 - 2(\textrm{y}_0 - \textrm{y}_1) t + \textrm{y}_0 = 0 $$
 
 So that it can be solved using the [quadratic formula](https://en.wikipedia.org/wiki/Quadratic_formula):
 
 $$ t_{0/1} = {-B \pm \sqrt{B^2-4ac} \over 2a} $$
+
 $$ a = \textrm{y}_0 - 2\textrm{y}_1 + \textrm{y}_2 \quad B = -2(\textrm{y}_0 - \textrm{y}_1) \quad c = \textrm{y}_0 $$
 
 Substituting $B = -2b$ yields:
 
 $$ t_{0/1} = {-(-2b) \pm \sqrt{(-2b)^2-4ac} \over 2a} = {2b \pm \sqrt{4b^2-4ac} \over 2a} = {b \pm \sqrt{b^2-ac} \over a} $$
+
 $$ a = \textrm{y}_0 - 2\textrm{y}_1 + \textrm{y}_2 \quad b = \textrm{y}_0 - \textrm{y}_1 \quad c = \textrm{y}_0 $$
 
 The quadratic equation may have zero, one or two solutions.
@@ -74,23 +77,27 @@ Finally, given a solution $t$ the corresponding x-coordinate can be calculated a
 
 At this point, the intersections between the ray and bezier curve have been identified,
 but they still need to be classified as entry or exit.
-The demo provided by Dobbie calculates the derivative of the bezier curve for each $t$ value to do this.
+The demo provided by Dobbie explicitly calculates the derivative of the bezier curve for each $t$ value to do this.
 However, the derivative can also be computed in general for both potential solutions $t_0/t_1$:
 
 $$ \mathbf{C}_y(t) = (\textrm{y}_0 - 2\textrm{y}_1 + \textrm{y}_2) t^2 - 2(\textrm{y}_0 - \textrm{y}_1) t + \textrm{y}_0 $$
+
 $$ \mathbf{C}_y(t) = a t^2 - 2b t + c $$
+
 $$ \frac{d\mathbf{C}_y(t)}{dt} = 2at - 2b $$
+
 $$ \frac{d\mathbf{C}_y(t_0)}{dt} = 2a{b - \sqrt{b^2-ac} \over a} - 2b = 2b - 2\sqrt{b^2-ac} - 2b = -2\sqrt{b^2-ac} \le 0 $$
+
 $$ \frac{d\mathbf{C}_y(t_1)}{dt} = 2a{b + \sqrt{b^2-ac} \over a} - 2b = 2b + 2\sqrt{b^2-ac} - 2b = 2\sqrt{b^2-ac} \ge 0 $$
 
 Therefore, the bezier curve crosses the x-axis in a fixed direction at each solution,
 and, combined with the convention for the orientation of the contour,
-$t_0$ is always an exit and the $t_1$ is always an entry.
+$t_0$ is always an exit and $t_1$ is always an entry.
 
-A different approach to understanding this relationship is to notice, that,
+A different approach to understanding this relationship is to notice that,
 because of the different signs used in the solutions and the square root being non-negative,
-$t_0$ has to come first along the curve $(t_0 <= t_1)$, if $a > 0$.
-Conversely, if $a < 0$ then the order is reversed and $t_1$ has to come first $(t_1 <= t_0)$.
+$t_0$ has to come first along the curve $(t_0 <= t_1)$ if $a > 0$.
+Conversely, if $a < 0$, then the order is reversed and $t_1$ has to come first $(t_1 <= t_0)$.
 The parameter $a$ can be rewritten as $2(\frac{\textrm{y}_0 + \textrm{y}_2}{2} - \textrm{y}_1)$,
 so its sign depends on whether the second control point is above or below the midpoint of the first and third control point.
 The following figure shows that the solutions are always correctly classified for all combinations of the direction of the curve and the sign of parameter $a$.
@@ -98,7 +105,7 @@ The following figure shows that the solutions are always correctly classified fo
 If the parameter $a$ is 0 (or sufficiently small in floating-point calculations), there is a linear relationship between $t$ and $y$
 (this is true for linear segments, but also for some non-linear curves; see figure below),
 and the quadratic formula can no longer be used because of the division by $a$.
-However, because the relationship is now linear, there can be at most one solution, which is easily computed.
+However, because the relationship is now linear, there can be at most one solution, which is easily computed and classified.
 
 Anti-aliasing along the ray direction is implemented by considering a window the size of a pixel around the ray origin.
 If an intersection falls into this window, then the winding number is changed only fractionally to compute the coverage of the pixel.
