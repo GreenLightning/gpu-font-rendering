@@ -139,6 +139,8 @@ make -j8 --directory build
 
 On Windows you might want to use CMake GUI and/or Visual Studio instead.
 
+On Linux you might have to install additional packages for OpenGL development (e.g. `sudo apt-get install xorg-dev libgl1-mesa-dev` for Ubuntu).
+
 #### 3. Run from the main project directory
 
 ```
@@ -150,4 +152,4 @@ the current directory to load its resources.
 **If you only get a black window**, this is most likely the issue.
 Check your working directory and check the console for errors.
 
-*Tested on Windows 10 and MacOS Monterey.*
+*Tested on Windows 10, MacOS Monterey and Ubuntu 22.04.*
