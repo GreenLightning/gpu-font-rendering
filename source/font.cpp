@@ -58,8 +58,25 @@ public:
 		return face;
 	}
 
-	Font(FT_Face face) : face(face) {
-		emSize = face->units_per_EM;
+	// If hinting is enabled, worldSize must be an integer and defines the font size in pixels used for hinting.
+	// Otherwise, worldSize can be an arbitrary floating-point value.
+	Font(FT_Face face, float worldSize = 1.0f, bool hinting = false) : face(face), worldSize(worldSize), hinting(hinting) {
+
+		if (hinting) {
+			loadFlags = FT_LOAD_NO_BITMAP;
+			kerningMode = FT_KERNING_DEFAULT;
+
+			emSize = worldSize * 64;
+			FT_Error error = FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(std::ceil(worldSize)));
+			if (error) {
+				std::cerr << "[font] error while setting pixel size: " << error << std::endl;
+			}
+
+		} else {
+			loadFlags = FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP;
+			kerningMode = FT_KERNING_UNSCALED;
+			emSize = face->units_per_EM;
+		}
 
 		glGenVertexArrays(1, &vao);
 
@@ -86,7 +103,7 @@ public:
 		{
 			uint32_t charcode = 0;
 			FT_UInt glyphIndex = 0;
-			FT_Error error = FT_Load_Glyph(face, glyphIndex, FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP);
+			FT_Error error = FT_Load_Glyph(face, glyphIndex, loadFlags);
 			if (error) {
 				std::cerr << "[font] error while loading undefined glyph: " << error << std::endl;
 				// Continue, because we always want an entry for the undefined glyph in our glyphs map!
@@ -99,7 +116,7 @@ public:
 			FT_UInt glyphIndex = FT_Get_Char_Index(face, charcode);
 			if (!glyphIndex) continue;
 
-			FT_Error error = FT_Load_Glyph(face, glyphIndex, FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP);
+			FT_Error error = FT_Load_Glyph(face, glyphIndex, loadFlags);
 			if (error) {
 				std::cerr << "[font] error while loading glyph for character " << charcode << ": " << error << std::endl;
 				continue;
@@ -135,6 +152,45 @@ public:
 	}
 
 public:
+	void setWorldSize(float worldSize) {
+		if (worldSize == this->worldSize) return;
+		this->worldSize = worldSize;
+
+		if (!hinting) return;
+
+		// We have to rebuild our buffers, because the outline coordinates can
+		// change because of hinting.
+
+		emSize = worldSize * 64;
+		FT_Error error = FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(std::ceil(worldSize)));
+		if (error) {
+			std::cerr << "[font] error while setting pixel size: " << error << std::endl;
+		}
+
+		bufferGlyphs.clear();
+		bufferCurves.clear();
+
+		for (auto it = glyphs.begin(); it != glyphs.end(); ) {
+			uint32_t charcode = it->first;
+			FT_UInt glyphIndex = it->second.index;
+
+			FT_Error error = FT_Load_Glyph(face, glyphIndex, loadFlags);
+			if (error) {
+				std::cerr << "[font] error while loading glyph for character " << charcode << ": " << error << std::endl;
+				it = glyphs.erase(it);
+				continue;
+			}
+
+			// This call will overwrite the glyph in the glyphs map. However, it
+			// cannot invalidate the iterator because the glyph is already in
+			// the map if we are here.
+			buildGlyph(charcode, glyphIndex);
+			it++;
+		}
+
+		uploadBuffers();
+	}
+
 	void prepareGlyphsForText(const std::string& text) {
 		bool changed = false;
 
@@ -147,7 +203,7 @@ public:
 			FT_UInt glyphIndex = FT_Get_Char_Index(face, charcode);
 			if (!glyphIndex) continue;
 
-			FT_Error error = FT_Load_Glyph(face, glyphIndex, FT_LOAD_NO_SCALE | FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP);
+			FT_Error error = FT_Load_Glyph(face, glyphIndex, loadFlags);
 			if (error) {
 				std::cerr << "[font] error while loading glyph for character " << charcode << ": " << error << std::endl;
 				continue;
@@ -174,50 +230,6 @@ private:
 		glBindBuffer(GL_TEXTURE_BUFFER, curveBuffer);
 		glBufferData(GL_TEXTURE_BUFFER, sizeof(BufferCurve) * bufferCurves.size(), bufferCurves.data(), GL_STATIC_DRAW);
 		glBindBuffer(GL_TEXTURE_BUFFER, 0);
-	}
-
-	// Decodes the first Unicode code point from the null-terminated UTF-8 string *text and advances *text to point at the next code point.
-	// If the encoding is invalid, advances *text by one byte and returns 0.
-	// *text should not be empty, because it will be advanced past the null terminator.
-	uint32_t decodeCharcode(const char** text) {
-		uint8_t first = static_cast<uint8_t>((*text)[0]);
-
-		// Fast-path for ASCII.
-		if (first < 128) {
-			(*text)++;
-			return static_cast<uint32_t>(first);
-		}
-
-		// This could probably be optimized a bit.
-		uint32_t result;
-		int size;
-		if ((first & 0xE0) == 0xC0) { // 110xxxxx
-			result = first & 0x1F;
-			size = 2;
-		} else if ((first & 0xF0) == 0xE0) { // 1110xxxx
-			result = first & 0x0F;
-			size = 3;
-		} else if ((first & 0xF8) == 0xF0) { // 11110xxx
-			result = first & 0x07;
-			size = 4;
-		} else {
-			// Invalid encoding.
-			(*text)++;
-			return 0;
-		}
-
-		for (int i = 1; i < size; i++) {
-			uint8_t value = static_cast<uint8_t>((*text)[i]);
-			// Invalid encoding (also catches a null terminator in the middle of a code point).
-			if ((value & 0xC0) != 0x80) { // 10xxxxxx
-				(*text)++;
-				return 0;
-			}
-			result = (result << 6) | (value & 0x3F);
-		}
-
-		(*text) += size;
-		return result;
 	}
 
 	void buildGlyph(uint32_t charcode, FT_UInt glyphIndex) {
@@ -431,6 +443,50 @@ private:
 		}
 	}
 
+	// Decodes the first Unicode code point from the null-terminated UTF-8 string *text and advances *text to point at the next code point.
+	// If the encoding is invalid, advances *text by one byte and returns 0.
+	// *text should not be empty, because it will be advanced past the null terminator.
+	uint32_t decodeCharcode(const char** text) {
+		uint8_t first = static_cast<uint8_t>((*text)[0]);
+
+		// Fast-path for ASCII.
+		if (first < 128) {
+			(*text)++;
+			return static_cast<uint32_t>(first);
+		}
+
+		// This could probably be optimized a bit.
+		uint32_t result;
+		int size;
+		if ((first & 0xE0) == 0xC0) { // 110xxxxx
+			result = first & 0x1F;
+			size = 2;
+		} else if ((first & 0xF0) == 0xE0) { // 1110xxxx
+			result = first & 0x0F;
+			size = 3;
+		} else if ((first & 0xF8) == 0xF0) { // 11110xxx
+			result = first & 0x07;
+			size = 4;
+		} else {
+			// Invalid encoding.
+			(*text)++;
+			return 0;
+		}
+
+		for (int i = 1; i < size; i++) {
+			uint8_t value = static_cast<uint8_t>((*text)[i]);
+			// Invalid encoding (also catches a null terminator in the middle of a code point).
+			if ((value & 0xC0) != 0x80) { // 10xxxxxx
+				(*text)++;
+				return 0;
+			}
+			result = (result << 6) | (value & 0x3F);
+		}
+
+		(*text) += size;
+		return result;
+	}
+
 public:
 	void drawSetup() {
 		GLint location;
@@ -465,7 +521,8 @@ public:
 
 			if (charcode == '\n') {
 				x = originalX;
-				y -= (float) face->height / emSize * worldSize;
+				y -= (float)face->height / (float)face->units_per_EM * worldSize;
+				if (hinting) y = std::round(y);
 				continue;
 			}
 
@@ -474,7 +531,7 @@ public:
 
 			if (previous != 0 && glyph.index != 0) {
 				FT_Vector kerning;
-				FT_Error error = FT_Get_Kerning(face, previous, glyph.index, FT_KERNING_UNSCALED, &kerning);
+				FT_Error error = FT_Get_Kerning(face, previous, glyph.index, kerningMode, &kerning);
 				if (!error) {
 					x += (float)kerning.x / emSize * worldSize;
 				}
@@ -538,7 +595,8 @@ public:
 
 			if (charcode == '\n') {
 				x = originalX;
-				y -= (float) face->height / emSize * worldSize;
+				y -= (float)face->height / (float)face->units_per_EM * worldSize;
+				if (hinting) y = std::round(y);
 				continue;
 			}
 
@@ -547,7 +605,7 @@ public:
 
 			if (previous != 0 && glyph.index != 0) {
 				FT_Vector kerning;
-				FT_Error error = FT_Get_Kerning(face, previous, glyph.index, FT_KERNING_UNSCALED, &kerning);
+				FT_Error error = FT_Get_Kerning(face, previous, glyph.index, kerningMode, &kerning);
 				if (!error) {
 					x += (float)kerning.x / emSize * worldSize;
 				}
@@ -578,7 +636,27 @@ public:
 
 private:
 	FT_Face face;
+
+	// Whether hinting is enabled for this instance.
+	// Note that hinting changes how we operate FreeType:
+	// If hinting is not enabled, we scale all coordinates ourselves (see comment for emSize).
+	// If hinting is enabled, we must let FreeType scale the outlines for the hinting to work properly.
+	// The variables loadFlags and kerningMode are set in the constructor and control this scaling behavior.
+	bool hinting;
+	FT_Int32 loadFlags;
+	FT_Kerning_Mode kerningMode;
+
+	// Size of the em square used to convert metrics into em-relative values,
+	// which can then be scaled to the worldSize. We do the scaling ourselves in
+	// floating point to support arbitrary world sizes (whereas the fixed-point
+	// numbers used by FreeType do not have enough resolution if the world size
+	// is small).
+	// Following the FreeType convention, if hinting (and therefore scaling) is enabled,
+	// this value is in 1/64th of a pixel (compatible with 26.6 fixed point numbers).
+	// If hinting/scaling is not enabled, this value is in font units.
 	float emSize;
+
+	float  worldSize;
 
 	GLuint vao, vbo, ebo;
 	GLuint glyphTexture, curveTexture;
@@ -589,7 +667,10 @@ private:
 	std::unordered_map<uint32_t, Glyph> glyphs;
 
 public:
-	GLuint program   = 0;
-	float  dilation  = 0;
-	float  worldSize = 1;
+	// ID of the shader program to use.
+	GLuint program = 0;
+
+	// The glyph quads are expanded by this amount to enable proper
+	// anti-aliasing. Value is relative to emSize.
+	float dilation = 0;
 };

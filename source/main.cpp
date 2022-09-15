@@ -224,6 +224,8 @@ namespace {
 	std::unique_ptr<Font> mainFont;
 	std::unique_ptr<Font> helpFont;
 
+	constexpr float helpFontBaseSize = 20.0f;
+
 	int antiAliasingWindowSize = 1;
 	bool enableSuperSamplingAntiAliasing = true;
 	bool enableControlPointsVisualization = false;
@@ -259,7 +261,7 @@ possible and, a moment later, is possible no longer.
 
 }
 
-static std::unique_ptr<Font> loadFont(const std::string& filename) {
+static std::unique_ptr<Font> loadFont(const std::string& filename, float worldSize = 1.0f, bool hinting = false) {
 	std::string error;
 	FT_Face face = Font::loadFace(library, filename, error);
 	if (error != "") {
@@ -267,15 +269,14 @@ static std::unique_ptr<Font> loadFont(const std::string& filename) {
 		return std::unique_ptr<Font>{};
 	}
 
-	return std::make_unique<Font>(face);
+	return std::make_unique<Font>(face, worldSize, hinting);
 }
 
 static void tryUpdateMainFont(const std::string& filename) {
-	auto font = loadFont(filename);
+	auto font = loadFont(filename, 0.05f);
 	if (!font) return;
 
 	font->dilation = 0.1f;
-	font->worldSize = 0.05f;
 
 	font->prepareGlyphsForText(mainText);
 
@@ -392,7 +393,13 @@ int main(int argc, char* argv[]) {
 	fontShader = shaderCatalog->get("font");
 
 	tryUpdateMainFont("fonts/SourceSerifPro-Regular.otf");
-	helpFont = loadFont("fonts/SourceSansPro-Semibold.otf");
+
+	{
+		float xscale, yscale;
+		glfwGetWindowContentScale(window, &xscale, &yscale);
+		float worldSize = std::ceil(helpFontBaseSize * yscale);
+		helpFont = loadFont("fonts/SourceSansPro-Semibold.otf", worldSize, true);
+	}
 
 	while(!glfwWindowShouldClose(window)) {
 		shaderCatalog->update();
@@ -506,7 +513,7 @@ int main(int argc, char* argv[]) {
 
 			float xscale, yscale;
 			glfwGetWindowContentScale(window, &xscale, &yscale);
-			helpFont->worldSize = std::ceil(20.0f * yscale);
+			helpFont->setWorldSize(std::ceil(helpFontBaseSize * yscale));
 
 			auto bb = helpFont->measure(0, 0, helpText);
 			helpFont->draw(10 - bb.minX, height - 10 - bb.maxY, helpText);
