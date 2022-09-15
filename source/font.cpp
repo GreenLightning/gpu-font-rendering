@@ -8,6 +8,8 @@ class Font {
 		FT_UInt index;
 		int32_t bufferIndex;
 
+		int32_t curveCount;
+
 		// Important glyph metrics in font units.
 		FT_Pos width, height;
 		FT_Pos bearingX;
@@ -237,6 +239,7 @@ private:
 		Glyph glyph;
 		glyph.index = glyphIndex;
 		glyph.bufferIndex = bufferIndex;
+		glyph.curveCount = bufferGlyph.count;
 		glyph.width = face->glyph->metrics.width;
 		glyph.height = face->glyph->metrics.height;
 		glyph.bearingX = face->glyph->metrics.horiBearingX;
@@ -477,24 +480,27 @@ public:
 				}
 			}
 
-			FT_Pos d = (FT_Pos) (emSize * dilation);
+			// Do not emit quad for empty glyphs (whitespace).
+			if (glyph.curveCount) {
+				FT_Pos d = (FT_Pos) (emSize * dilation);
 
-			float u0 = (float)(glyph.bearingX-d) / emSize;
-			float v0 = (float)(glyph.bearingY-glyph.height-d) / emSize;
-			float u1 = (float)(glyph.bearingX+glyph.width+d) / emSize;
-			float v1 = (float)(glyph.bearingY+d) / emSize;
+				float u0 = (float)(glyph.bearingX-d) / emSize;
+				float v0 = (float)(glyph.bearingY-glyph.height-d) / emSize;
+				float u1 = (float)(glyph.bearingX+glyph.width+d) / emSize;
+				float v1 = (float)(glyph.bearingY+d) / emSize;
 
-			float x0 = x + u0 * worldSize;
-			float y0 = y + v0 * worldSize;
-			float x1 = x + u1 * worldSize;
-			float y1 = y + v1 * worldSize;
+				float x0 = x + u0 * worldSize;
+				float y0 = y + v0 * worldSize;
+				float x1 = x + u1 * worldSize;
+				float y1 = y + v1 * worldSize;
 
-			int32_t base = static_cast<int32_t>(vertices.size());
-			vertices.push_back(BufferVertex{x0, y0, u0, v0, glyph.bufferIndex});
-			vertices.push_back(BufferVertex{x1, y0, u1, v0, glyph.bufferIndex});
-			vertices.push_back(BufferVertex{x1, y1, u1, v1, glyph.bufferIndex});
-			vertices.push_back(BufferVertex{x0, y1, u0, v1, glyph.bufferIndex});
-			indices.insert(indices.end(), { base, base+1, base+2, base+2, base+3, base });
+				int32_t base = static_cast<int32_t>(vertices.size());
+				vertices.push_back(BufferVertex{x0, y0, u0, v0, glyph.bufferIndex});
+				vertices.push_back(BufferVertex{x1, y0, u1, v0, glyph.bufferIndex});
+				vertices.push_back(BufferVertex{x1, y1, u1, v1, glyph.bufferIndex});
+				vertices.push_back(BufferVertex{x0, y1, u0, v1, glyph.bufferIndex});
+				indices.insert(indices.end(), { base, base+1, base+2, base+2, base+3, base });
+			}
 
 			x += (float)glyph.advance / emSize * worldSize;
 			previous = glyph.index;
