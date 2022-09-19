@@ -39,7 +39,7 @@ The direction of the rays does not matter for this winding number computation,
 but the math can be greatly simplified by using rays parallel to the x-axis.
 By subtracting the sample position from the control points of the bezier curves,
 the coordinate system is shifted so that the origin of the ray is at $(0, 0)$ and the ray coincides with the positive x-axis.
-For an intersection between the ray and a bezier curve the conditions $y = 0$ and $x >= 0$ must then be true.
+For an intersection between the ray and a bezier curve the conditions $y = 0$ and $x \ge 0$ must then be true.
 Anti-aliasing (see below) will happen along the direction of the rays,
 but other directions can be achieved by first rotating the control points of the bezier curves around the origin so that the rays align with the x-axis again.
 
@@ -73,7 +73,7 @@ $$ a = \textrm{y}_0 - 2\textrm{y}_1 + \textrm{y}_2 \quad b = \textrm{y}_0 - \tex
 The quadratic equation may have zero, one or two solutions.
 Furthermore, a solution $t$ has to satisfy $0 \le t < 1$ to be on the segment described by the control points
 (the end point is excluded since it is part of the next segment of the outline).
-Finally, given a solution $t$ the corresponding x-coordinate can be calculated as $\mathbf{C}_x(t)$ to check the second condition $x >= 0$ for an intersection.
+Finally, given a solution $t$ the corresponding x-coordinate can be calculated as $\mathbf{C}_x(t)$ to check the second condition $x \ge 0$ for an intersection.
 
 At this point, the intersections between the ray and bezier curve have been identified,
 but they still need to be classified as entry or exit.
@@ -106,15 +106,22 @@ Notice how the order of the solutions along the curve changes, but the ray alway
 ![order of solutions depending on parameter a](images/order.svg)
 
 If the parameter $a$ is 0 (or sufficiently small in floating-point calculations), there is a linear relationship between $t$ and $y$
-(this is true for linear segments, but also for some non-linear curves; see figure below),
+(this is true for linear segments, but also for some non-linear curves),
 and the quadratic formula can no longer be used because of the division by $a$.
 However, because the relationship is now linear, there can be at most one solution, which is easily computed and classified.
 
 Anti-aliasing along the ray direction is implemented by considering a window the size of a pixel around the ray origin.
 If an intersection falls into this window, then the winding number is changed only fractionally to compute the coverage of the pixel.
-(Note, that we have to also consider intersections slightly behind the ray origin now,
-but the implementation first calculates any intersection with the x-axis and then verifies the x-position,
-so it does not change much.)
+The fractional weight is determined by the distance from the left edge of the pixel (this is consistent with the rays pointing to the right).
+By considering the individual sections, one can see that this calculates the one-dimensional coverage exactly.
+
+![anti-aliasing](images/antialias-opt.svg)
+
+Note, that we have to also consider intersections slightly behind the ray origin now,
+but the implementation first calculates any intersection with the x-axis and then verifies the x-position, so it does not change much.
+A different way of thinking about this is that the condition $x \ge 0$ implies a weighting function that is 0 for $x < 0$ and 1 for $x \ge 0$.
+We can remove the discontinuity by introducing a linear segment over the width of one pixel.
+
 For full anti-aliasing we can use multiple rays along different directions (e.g. one along the x-axis and one along the y-axis).
 
 ## Build Instructions
