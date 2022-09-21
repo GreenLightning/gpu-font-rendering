@@ -21,11 +21,11 @@ A contour consists of line segments and bezier curve segments defined by a list 
 Following the TrueType convention, outside contours are oriented in clockwise direction and inside contours are oriented in counterclockwise direction.
 In other words, when following the direction of the contour, the filled area is always to the right.
 
-![contour orientations](images/contour2.svg)
+![contour orientations](images/contour1-opt.svg)
 
 The contours of a glyph are converted into a list of individual quadratic bezier curves (defined by their control points), which are uploaded to the GPU.
 
-![contour splitting](images/contour3.svg)
+![contour splitting](images/contour2-opt.svg)
 
 A quad is generated for each glyph and the pixel shader determines whether each pixel is inside or outside the glyph.
 To do this, the winding number of the pixel is calculated by intersecting a ray with the bezier curves.
@@ -33,7 +33,7 @@ At every intersection the ray either enters or exits the filled area as determin
 At every exit the winding number is increased by one and at every entry the winding number is decreased by one.
 After considering all intersections, the winding number will be non-zero if the pixel is inside the outline.
 
-![winding number computation](images/ray1.svg)
+![winding number computation](images/ray-opt.svg)
 
 The direction of the rays does not matter for this winding number computation,
 but the math can be greatly simplified by using rays parallel to the x-axis.
@@ -103,7 +103,7 @@ so its sign depends on whether the second control point is above or below the mi
 The following figure shows that the solutions are always correctly classified for all combinations of the direction of the curve and the sign of parameter $a$.
 Notice how the order of the solutions along the curve changes, but the ray always enters at a $t_1$ solution and exits at a $t_0$ solution.
 
-![order of solutions depending on parameter a](images/order.svg)
+![order of solutions depending on parameter a](images/order-opt.svg)
 
 If the parameter $a$ is 0 (or sufficiently small in floating-point calculations), there is a linear relationship between $t$ and $y$
 (this is true for linear segments, but also for some non-linear curves),

@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg width="800" height="500" version="1.1" viewBox="0 0 800 500" xmlns="http://www.w3.org/2000/svg">
+	<rect width="800" height="500" fill="#fff" fill-opacity=".85"/>
+	<path d="m79.598 1124.8h122.83v-384.78h159.83c213.11 0 358.14-96.194 358.14-300.42 0-213.11-146.51-285.62-364.06-285.62h-276.74zm122.83-485.41v-386.26h139.11c170.19 0 256.03 45.877 256.03 186.47 0 137.63-81.395 199.79-250.11 199.79z" fill="#404040" stroke-width="3.6998"/>
+	<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+		<path d="m79.598 1124.8h122.83v-384.78h159.83c106.55 0 196.09-24.049 258.99-73.626 62.896-49.577 99.154-124.68 99.154-226.8 0-106.55-36.628-177.96-100.45-222.73-63.821-44.767-154.84-62.896-263.61-62.896h-276.74zm122.83-485.41v-386.26h139.11c85.095 0 149.1 11.469 191.83 40.513 42.733 29.043 64.191 75.661 64.191 145.96 0 68.816-20.349 118.76-61.786 151.51-41.438 32.743-103.96 48.282-188.32 48.282z" stroke="#e57e00" stroke-width="8"/>
+		<path d="m79.598 639.35v-485.41h448.84l191.96 131.93 1e-5 153.69-1e-5 148.98-99.154 77.817" stop-color="#000000" stroke="#000" stroke-dasharray="8, 12" stroke-width="4" style="font-variation-settings:normal"/>
+		<path d="m202.43 639.35v-386.26h69.556l69.556-1e-5h132.33l123.69 84.219 1e-5 102.25-1e-5 103.23-123.58 96.555h-199.04z" stop-color="#000000" stroke="#000" stroke-dasharray="8, 12" stroke-width="4" style="font-variation-settings:normal"/>
+	</g>
+	<g fill="#0f0">
+		<circle cx="79.598" cy="153.94" r="10"/>
+		<circle cx="202.43" cy="253.09" r="10"/>
+		<circle cx="202.43" cy="639.35" r="10"/>
+		<circle cx="347.46" cy="639.35" r="10"/>
+		<circle cx="341.54" cy="253.09" r="10"/>
+		<circle cx="356.34" cy="153.94" r="10"/>
+		<circle cx="619.95" cy="216.83" r="10"/>
+		<circle cx="720.4" cy="439.56" r="10"/>
+		<circle cx="597.57" cy="439.56" r="10"/>
+		<circle cx="533.38" cy="293.6" r="10"/>
+		<circle cx="535.78" cy="591.07" r="10"/>
+		<circle cx="621.25" cy="666.36" r="10"/>
+	</g>
+	<g fill="#fd00ff">
+		<circle cx="217.97" cy="153.94" r="10"/>
+		<circle cx="271.99" cy="253.09" r="10"/>
+		<circle cx="473.88" cy="253.09" r="10"/>
+		<circle cx="528.44" cy="153.94" r="10"/>
+		<circle cx="597.57" cy="337.31" r="10"/>
+		<circle cx="720.4" cy="285.87" r="10"/>
+		<circle cx="597.57" cy="542.79" r="10"/>
+		<circle cx="720.4" cy="588.54" r="10"/>
+		<circle cx="202.43" cy="446.22" r="10"/>
+		<circle cx="79.598" cy="639.35" r="10"/>
+		<circle cx="274.95" cy="639.35" r="10"/>
+		<circle cx="473.98" cy="639.35" r="10"/>
+	</g>
+	<path d="m79.598 53.937h276.74" fill="none" stop-color="#000000" stroke="#e57e00" stroke-linecap="round" stroke-linejoin="round" stroke-width="8" style="font-variation-settings:normal"/>
+	<path d="m79.598 53.937h276.74" fill="none" stop-color="#000000" stroke="#000" stroke-dasharray="8, 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" style="font-variation-settings:normal"/>
+	<g>
+		<circle cx="79.598" cy="53.937" r="10" fill="#0f0"/>
+		<circle cx="356.34" cy="53.937" r="10" fill="#0f0"/>
+		<circle cx="217.97" cy="53.937" r="10" fill="#fd00ff"/>
+	</g>
+	<path d="m659.95 116.83c-63.821-44.767-154.84-62.896-263.61-62.896" fill="none" stroke="#e57e00" stroke-linecap="round" stroke-linejoin="round" stroke-width="8"/>
+	<path d="m396.34 53.937h172.1l91.515 62.896" fill="none" stop-color="#000000" stroke="#000" stroke-dasharray="8, 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" style="font-variation-settings:normal"/>
+	<g>
+		<circle cx="396.34" cy="53.937" r="10" fill="#0f0"/>
+		<circle cx="659.95" cy="116.83" r="10" fill="#0f0"/>
+		<circle cx="568.44" cy="53.937" r="10" fill="#fd00ff"/>
+	</g>
+	<g transform="translate(-88.311 -180.8)">
+		<path d="m303.28 264.62v53.054h6v-53.054z" color="#000000" stroke-linejoin="round" stroke-width=".93936" style="-inkscape-stroke:none"/>
+		<g fill-rule="evenodd">
+			<path d="m306.28 253.37 9.7476 16.863h-19.495z" color="#000000" stroke-width="1.9495pt" style="-inkscape-stroke:none"/>
+			<path d="m306.28 250.77-1.125 1.9473-10.875 18.814h24zm0 5.1934 7.4961 12.969h-14.992z" color="#000000" style="-inkscape-stroke:none"/>
+		</g>
+	</g>
+	<g transform="rotate(22.381 859.29 801.13)">
+		<path d="m303.28 264.62v47.485h6v-47.485z" color="#000000" stroke-linejoin="round" stroke-width=".8887" style="-inkscape-stroke:none"/>
+		<g fill-rule="evenodd">
+			<path d="m306.28 253.37 9.7476 16.863h-19.495z" color="#000000" stroke-width="1.9495pt" style="-inkscape-stroke:none"/>
+			<path d="m306.28 250.77-1.125 1.9473-10.875 18.814h24zm0 5.1934 7.4961 12.969h-14.992z" color="#000000" style="-inkscape-stroke:none"/>
+		</g>
+	</g>
+	<text x="701.72668" y="119.38383" display="none" font-family="sans-serif" font-size="50px" style="line-height:1.25" xml:space="preserve"><tspan x="0" y="0" font-family="'Source Sans Pro'" font-size="50px">...</tspan></text>
+	<g aria-label="...">
+		<path d="m707.98 119.98c1.6 0 2.95-1.3 2.95-3.1 0-1.9-1.35-3.2-2.95-3.2-1.65 0-3 1.3-3 3.2 0 1.8 1.35 3.1 3 3.1z"/>
+		<path d="m720.43 119.98c1.6 0 2.95-1.3 2.95-3.1 0-1.9-1.35-3.2-2.95-3.2-1.65 0-3 1.3-3 3.2 0 1.8 1.35 3.1 3 3.1z"/>
+		<path d="m732.88 119.98c1.6 0 2.95-1.3 2.95-3.1 0-1.9-1.35-3.2-2.95-3.2-1.65 0-3 1.3-3 3.2 0 1.8 1.35 3.1 3 3.1z"/>
+	</g>
+</svg>
