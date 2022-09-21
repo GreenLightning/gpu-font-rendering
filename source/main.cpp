@@ -525,6 +525,10 @@ int main(int argc, char* argv[]) {
 		glfwSwapBuffers(window);
 	}
 
+	// Clean up OpenGL resources before termination.
+	mainFont = nullptr;
+	helpFont = nullptr;
+
 	glfwTerminate();
 	return 0;
 }
