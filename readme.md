@@ -124,6 +124,17 @@ We can remove the discontinuity by introducing a linear segment over the width o
 
 For full anti-aliasing we can use multiple rays along different directions (e.g. one along the x-axis and one along the y-axis).
 
+## Notes
+
+This kind of technique is subject to artifacts from the limited numerical precision of floating point numbers.
+The image below shows an instance of such artifacts when fully zoomed in (and knowing where to look).
+Nevertheless, I have found this implementation to be quite numerically stable already.
+Any remaining artifacts could be eliminated using the Slug algorithm, which is not implemented here due to the associated patent.
+
+This demo also does not implement any performance optimizations (like banding) and might have high GPU usage in some scenarios and when using very complex fonts.
+
+![numeric stability artifacts](images/artifacts.png)
+
 ## Build Instructions
 
 #### 1. Init submodules
